@@ -1,0 +1,8 @@
+batch_size: 128
+delta: 0
+dropout: 0.2
+epochs: 400
+hidden_size_pi: 20
+lr: 0.001
+name: Max-min fair
+weight_decay: 0

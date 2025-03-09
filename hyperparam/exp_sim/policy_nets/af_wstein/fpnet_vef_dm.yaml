@@ -1,0 +1,11 @@
+epochs: 150
+batch_size: 64
+dropout: 0
+lr: 0.0005
+lr_adv: 0.0005
+hidden_size_pi: 10
+hidden_size_phi: 10
+hidden_size_adv: 10
+weight_decay: 0
+gamma: 100
+name: "Value Unfair Action fair"

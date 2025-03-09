@@ -1,0 +1,10 @@
+epochs: 200
+batch_size: 64
+dropout: 0
+lr: 0.001
+hidden_size_pi: 10
+hidden_size_phi: 10
+hidden_size_adv: 10
+weight_decay: 0
+lamb: 0.05
+name: "Value Unfair Action fair oracle"

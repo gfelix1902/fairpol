@@ -1,0 +1,42 @@
+#Configuration for simulation
+data:
+  dataset: "sim"
+  n_train: 1000
+  n_val: 500
+  n_test: 1000
+  p_xu: 1
+  p_xs: 1
+  prob_s0: 0.3
+  noise_Y: 0.1
+  noise_xs: 0.1
+  y_type: "continuous"
+
+#Configuration for experiment
+experiment:
+  runs: 5
+  seed: 12345
+  plotting: False                #Plot representations
+  neptune: False                 #Logging of training/ validation loss
+  validation: True                  #True if validation loss should be computed
+  hyper_path: "/hyperparam/exp_sim"    #Path of hyperparameters
+  oracle_nuisance: True                 #True if ground-truth nuisance parameters should be used (simualted data)
+  nuisance_only: False
+  repr_only: False                      #True if no policy should be learned, only representation
+  save_results: True                    #If True, results will be stored in /results folder
+  m: "dm"                              #Score used to estimate policy value: dm = direct, ipw = inverse propensity weighted, dr = doubly robust
+  models:                                 #Models to be trained and evaluated: ours: fpnet
+    #- name: "untrained"
+    - name: "fpnet"
+      action_fair: "af_conf"                 #Action fairness: af_conf = domain confusion loss, af_wstein = wasserstein loss, af_gr = gradient reversal
+      value_fair: "vuf"                       #Value fairness: vuf = value unfair, vmm: max-min fair, vef: envy-free
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vmm"
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vef"
+
+
+
+
+

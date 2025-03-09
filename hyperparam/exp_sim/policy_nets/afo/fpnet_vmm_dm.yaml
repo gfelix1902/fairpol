@@ -1,0 +1,8 @@
+epochs: 300
+batch_size: 64
+dropout: 0
+lr: 0.005
+hidden_size_pi: 10
+weight_decay: 0
+delta: 0
+name: "Max min Action fair oracle"

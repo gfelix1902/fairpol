@@ -1,0 +1,8 @@
+epochs: 500
+batch_size: 64
+dropout: 0
+lr: 0.001
+hidden_size_phi: 5
+weight_decay: 0
+gamma: 10
+name: "Repr net Wasserstein"

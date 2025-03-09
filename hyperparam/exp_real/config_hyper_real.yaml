@@ -1,0 +1,80 @@
+data:
+  dataset: "real"
+  train_frac: 0.8
+  val_frac: 0.1
+  y_type: "continuous"
+
+experiment:
+  runs: 30
+  seed: 12345
+  neptune: False
+  validation: True
+  hyper_path: "/hyperparam/exp_real"
+  oracle_nuisance: False
+  nuisance_only: False
+  tune_repr: False
+  tune_tarnet: False
+  models:
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vuf"
+      m: "dr"
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vmm"
+      m: "dr"
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vef"
+      m: "dr"
+
+tuning_ranges:
+  tarnet:
+    epochs: [ 200 ]
+    batch_size: [ 32, 64, 128 ]
+    dropout: [ 0, 0.1, 0.2, 0.3 ]
+    lr: [ 0.0001, 0.0005, 0.001, 0.005 ]
+    hidden_size_1: [ 5, 10, 20, 30]
+    hidden_size_2: [ 5, 10, 20, 30]
+    hidden_size_prop: [ 5, 10, 20, 30]
+    weight_decay: [ 0 ]
+    learn_prop: [True]
+    name: [ "TARNet" ]
+  repr_net_conf:
+    epochs: [ 400 ]
+    batch_size: [ 32, 64, 128 ]
+    dropout: [ 0, 0.1, 0.2]
+    lr: [ 0.0001, 0.0005, 0.001, 0.005 ]
+    hidden_size_phi: [ 2, 5, 10 ]
+    weight_decay: [ 0, 0.001 ]
+    gamma: [ 0.5 ]
+    delta: [ 0 ]
+    name: [ "Repr net Domain Confusion" ]
+  fpnet_vuf:
+    epochs: [ 300 ]
+    batch_size: [ 32, 64, 128 ]
+    dropout: [ 0, 0.1, 0.2, 0.3 ]
+    lr: [ 0.00005, 0.0001, 0.0005, 0.001 ]
+    hidden_size_pi: [ 5, 10, 15, 20 ]
+    weight_decay: [ 0 ]
+    delta: [ 0 ]
+    name: [ "Value unfair" ]
+  fpnet_vmm:
+    epochs: [ 300 ]
+    batch_size: [ 32, 64, 128 ]
+    dropout: [ 0, 0.1, 0.2, 0.3 ]
+    lr: [ 0.00005, 0.0001, 0.0005, 0.001 ]
+    hidden_size_pi: [ 5, 10, 15, 20 ]
+    weight_decay: [ 0 ]
+    delta: [ 0 ]
+    name: [ "Max-min fair" ]
+  fpnet_vef:
+    epochs: [ 300 ]
+    batch_size: [ 32, 64, 128 ]
+    dropout: [ 0, 0.1, 0.2, 0.3 ]
+    lr: [ 0.00005, 0.0001, 0.0005, 0.001 ]
+    hidden_size_pi: [ 5, 10, 15, 20 ]
+    weight_decay: [ 0 ]
+    delta: [ 0 ]
+    lamb: [ 0.6 ]
+    name: [ "Envy-free" ]

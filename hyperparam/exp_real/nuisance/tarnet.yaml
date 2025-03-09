@@ -1,0 +1,10 @@
+batch_size: 32
+dropout: 0
+epochs: 200
+hidden_size_1: 10
+hidden_size_2: 20
+hidden_size_prop: 5
+learn_prop: true
+lr: 0.0001
+name: TARNet
+weight_decay: 0

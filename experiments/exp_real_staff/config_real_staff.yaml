@@ -1,0 +1,43 @@
+# Configuration for Job Corps data
+data:
+  dataset: "job_corps" # Neuer Datensatzname
+  data_path: "data/JC.RData" # Pfad zu Ihrer RData-Datei
+  train_frac: 0.7
+  val_frac: 0.15
+  y_type: "continuous" # Ihr Outcome ist "earny4", was kontinuierlich ist
+  outcome_col: "earny4"
+  treat_col: "assignment"
+  sensitive_col: "female"
+  covariate_cols: ["age", "educ", "white", "black", "hispanic", "english", "cohabmarried", "haschild", "everwkd", "mwearn", "hhsize", "educmum", "educdad", "welfarechild", "health", "smoke", "alcohol"]
+  categorical_cols: ["white", "black", "hispanic", "english", "cohabmarried", "haschild", "everwkd"]
+  continuous_cols: ["age", "educ", "mwearn", "hhsize", "educmum", "educdad"]
+  ordinal_cols: ["welfarechild", "health", "smoke", "alcohol"]
+
+# Configuration for experiment
+experiment:
+  runs: 5
+  seed: 12345
+  plotting: False
+  neptune: True
+  validation: True
+  hyper_path: "/hyperparam/exp_real_staff" # Passen Sie den Hyperparameter-Pfad an
+  oracle_nuisance: False
+  nuisance_only: False
+  save_results: True
+  m: "dr"
+  models:
+    - name: "fpnet"
+      action_fair: "auf"
+      value_fair: "vuf"
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vuf"
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vmm"
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vef"
+    - name: "fpnet"
+      action_fair: "auf"
+      value_fair: "vef"

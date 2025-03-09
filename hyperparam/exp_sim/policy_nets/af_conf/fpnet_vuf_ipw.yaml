@@ -1,0 +1,8 @@
+batch_size: 64
+delta: 0
+dropout: 0.3
+epochs: 400
+hidden_size_pi: 10
+lr: 0.0001
+name: Value unfair
+weight_decay: 0

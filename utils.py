@@ -129,7 +129,7 @@ def train_model(model, datasets, config):
     logger = get_logger(config["experiment"]["neptune"])
 
     trainer = pl.Trainer(max_epochs=epochs, enable_progress_bar=False, enable_model_summary=False,
-                          gpus=get_device(), logger=logger, enable_checkpointing=False)
+                          devices=get_device(), accelerator="gpu" if get_device() else "cpu", logger=logger, enable_checkpointing=False)
 
     train_loader = DataLoader(dataset=datasets["d_train"], batch_size=batch_size, shuffle=True)
     try:

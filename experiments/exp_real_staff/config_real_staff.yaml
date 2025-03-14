@@ -1,7 +1,7 @@
 # Configuration for Job Corps data
 data:
   dataset: "job_corps" # Neuer Datensatzname
-  data_path: "data/JC.RData" # Pfad zu Ihrer RData-Datei
+  data_path: "JC_processed.csv" # Pfad zu Ihrer RData-Datei
   train_frac: 0.7
   val_frac: 0.15
   y_type: "continuous" # Ihr Outcome ist "earny4", was kontinuierlich ist

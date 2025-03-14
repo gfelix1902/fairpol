@@ -17,14 +17,16 @@ CATEGORICAL_COLS = ["white", "black", "hispanic", "english", "cohabmarried", "ha
 CONTINUOUS_COLS = ["age", "educ", "mwearn", "hhsize", "educmum", "educdad"]
 ORDINAL_COLS = ["welfarechild", "health", "smoke", "alcohol"]
 
-def load_data(file_path: str) -> pd.DataFrame:
+def load_data() -> pd.DataFrame:
     """Load data from an RData file."""
+    project_path = utils.get_project_path()
+    path = os.path.join(project_path, "JC_processed.csv")  # Ersetzen Sie "JC.csv" durch Ihren Dateinamen
     try:
-        data = pyreadr.read_r(file_path)[None]
-    except Exception as e:
-        print(f"Error: Failed to load RData file at {file_path}. {str(e)}")
+        data = pd.read_csv(path)
+        return data
+    except FileNotFoundError:
+        print(f"Fehler: Datei nicht gefunden unter {path}. Stellen Sie sicher, dass die Datei vorhanden ist.")
         return None
-    return data
 
 def preprocess_data(data: pd.DataFrame) -> tuple:
     """Preprocess data by removing missing values and encoding categorical variables."""
@@ -87,20 +89,21 @@ def create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_v
 
     return {"d_train": d_train, "d_val": d_val, "d_test": d_test}
 
-def main():
+def main(config_data):
     # Konfiguration anpassen
-    config = {"train_frac": 0.7, "val_frac": 0.15}
-    project_path = utils.get_project_path()
-    path = os.path.join(project_path, "data", "JC.RData")
-    data = load_data(path)
+    # project_path = utils.get_project_path()
+    # path = os.path.join(project_path, config_data["data_path"])
+    data = load_data()
 
-    if data: # überprüft ob die Daten erfolgreich geladen wurden.
+    if data is not None:  # Überprüft, ob die Daten erfolgreich geladen wurden.
         print("Job Corps-Daten erfolgreich geladen und verarbeitet.")
         y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test = preprocess_data(data)
         datasets = create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test)
-        print(datasets["d_train"].data["y"].shape) # zeigt die Dimensionen der geladenen Daten.
+        print(datasets["d_train"].data["y"].shape)  # zeigt die Dimensionen der geladenen Daten.
+        return datasets
     else:
         print("Fehler beim Laden der Daten!")
-
+        return None
+    
 if __name__ == "__main__":
     main()

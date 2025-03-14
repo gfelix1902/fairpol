@@ -16,6 +16,7 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
         # Nuisance model TARNet
         print("Train nuisance TARNet")
         utils.set_seed(seed)
+        print(f"Hyperparameter-Pfad: {hyper_path + '/nuisance/tarnet'}")
         config_tarnet = get_hyper(config_exp, datasets["d_train"], hyper_path + "/nuisance/tarnet")
         tarnet = ub.train_tarnet(datasets, config_tarnet)
         nuisance["tarnet"] = tarnet["trained_model"]

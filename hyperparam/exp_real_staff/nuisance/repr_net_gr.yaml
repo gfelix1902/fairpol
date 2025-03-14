@@ -1,0 +1,8 @@
+epochs: 400
+batch_size: 64
+dropout: 0
+lr: 0.0005
+hidden_size_phi: 5
+weight_decay: 0
+gamma: 1
+name: "Repr net Gradient Reversal"

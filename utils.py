@@ -14,6 +14,7 @@ import numpy as np
 from data.sim_binary_s2 import generate_datasets
 from data.load_real import load_oregon
 from data.load_real_staff import main as load_staff_data
+from data.load_real_job import load_data_from_csv
 
 def get_device():
     if torch.cuda.is_available():
@@ -63,7 +64,8 @@ def load_data(config_data, standardize=True):
         print("Oregon Datensatz erfolgreich geladen.")
         return datasets
     elif config_data["dataset"] == "real_staff" or config_data["dataset"] == "job_corps":
-        datasets = load_staff_data(config_data)
+        # datasets = load_staff_data(config_data)
+        datasets = load_data_from_csv(config_data)
         if datasets:
             print(f"{config_data['dataset']} Datensatz erfolgreich geladen.")
             return datasets
@@ -128,8 +130,17 @@ def train_model(model, datasets, config):
     validation = config["experiment"]["validation"]
     logger = get_logger(config["experiment"]["neptune"])
 
-    trainer = pl.Trainer(max_epochs=epochs, enable_progress_bar=False, enable_model_summary=False,
-                          devices=get_device(), accelerator="gpu" if get_device() else "cpu", logger=logger, enable_checkpointing=False)
+    # trainer = pl.Trainer(max_epochs=epochs, enable_progress_bar=False, enable_model_summary=False,
+    #                      devices=1 if get_device() else 0, accelerator="gpu" if get_device() else "cpu", logger=logger, enable_checkpointing=False)
+
+    trainer = pl.Trainer(
+        max_epochs=epochs,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        accelerator="gpu" if get_device() else "cpu",
+        logger=logger,
+        enable_checkpointing=False
+    )
 
     train_loader = DataLoader(dataset=datasets["d_train"], batch_size=batch_size, shuffle=True)
     try:

@@ -29,6 +29,7 @@ def perform_experiment(config, fixed_params=None):
         datasets = utils.load_data(config_data)
         # Train models
         trained_models = model_training.train_models(config_exp, datasets, seed, fixed_params=fixed_params)
+        # trained_models = None
         # Evaluate
         # Test predictions
         # p_predictions = model_evaluation.get_policy_predictions(trained_models, datasets["d_test"])

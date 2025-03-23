@@ -26,7 +26,12 @@ def get_policy_predictions(trained_models, d_test, data_type="real"):
     names = [model["name"] for model in models_names]
     df_results = pd.DataFrame(columns=names, index=range(n_test))
     for model in models_names:
-        df_results.loc[:, model["name"]] = model["model"].predict(d_test).detach().numpy()
+        #df_results.loc[:, model["name"]] = model["model"].predict(d_test).detach().numpy()
+        prediction = model["model"].predict(d_test).detach().numpy()
+        if np.isnan(prediction).any():
+            print(f"❌ NaN-Wert in der Vorhersage für Modell {model['name']}")
+        df_results.loc[:, model["name"]] = prediction
+
     return df_results
 
 
@@ -45,18 +50,62 @@ def get_table_pvalues(trained_models, d_test, data_type="sim"):
 
 
 def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
+    print(f"➡️ data_type: {data_type}")  # Debug-Output für den data_type
+    
     models_names = get_models_names(trained_models)
+    df_results = None
+    
     if data_type == "sim":
+        print("🔹 Verwende 'sim' Daten...")
         df_results = create_table(models_names, len(d_test))
         for model in models_names:
-            # estimate conditional policy values using perturbed test data (ground truth)
-            df_results.loc[:, model["name"]] = model["model"].evaluate_policy_perturbed(d_test)
+            try:
+                result = model["model"].evaluate_policy_perturbed(d_test)
+                print(f"✅ Ergebnis für {model['name']}: {result}")
+                if result is not None:
+                    df_results.loc[:, model["name"]] = result
+                else:
+                    print(f"⚠️ Keine gültigen Ergebnisse für Modell {model['name']}")
+            except Exception as e:
+                print(f"❌ Fehler beim Bewerten von {model['name']}: {e}")
 
     elif data_type == "real":
+        print("🔹 Verwende 'real' Daten...")
         df_results = create_table(models_names, 2)
         for model in models_names:
-            # estimate conditional policy values on real data using estimator
-            df_results.loc[:, model["name"]] = model["model"].evaluate_conditional_pvalues(d_test, oracle=False)
+            try:
+                result = model["model"].evaluate_conditional_pvalues(d_test, oracle=False)
+                print(f"✅ Ergebnis für {model['name']}: {result}")
+                if result is not None:
+                    df_results.loc[:, model["name"]] = result
+                else:
+                    print(f"⚠️ Keine gültigen Ergebnisse für Modell {model['name']}")
+            except Exception as e:
+                print(f"❌ Fehler beim Bewerten von {model['name']}: {e}")
+
+    elif data_type == "real_staff":
+        print("🔹 Verwende 'real_staff' Daten...")  # Zusätzlicher Debug-Output
+        df_results = create_table(models_names, 2)
+        for model in models_names:
+            try:
+                result = model["model"].evaluate_conditional_pvalues(d_test, oracle=False)
+                print(f"✅ Ergebnis für {model['name']} (real_staff): {result}")
+                if result is not None:
+                    df_results.loc[:, model["name"]] = result
+                else:
+                    print(f"⚠️ Keine gültigen Ergebnisse für Modell {model['name']}")
+            except Exception as e:
+                print(f"❌ Fehler beim Bewerten von {model['name']} (real_staff): {e}")
+
+    else:
+        print(f"❌ Unbekannter data_type: {data_type}")
+
+    if df_results is None:
+        print("⚠️ Kein gültiges Ergebnis - leeres DataFrame wird zurückgegeben.")
+        df_results = pd.DataFrame()  # Fallback für leeres Ergebnis
+    
+    print(f"➡️ Ergebnis-DataFrame:\n{df_results}")  # Ergebnis anzeigen
+    
     return df_results
 
 

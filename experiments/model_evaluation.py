@@ -26,12 +26,7 @@ def get_policy_predictions(trained_models, d_test, data_type="real"):
     names = [model["name"] for model in models_names]
     df_results = pd.DataFrame(columns=names, index=range(n_test))
     for model in models_names:
-        #df_results.loc[:, model["name"]] = model["model"].predict(d_test).detach().numpy()
-        prediction = model["model"].predict(d_test).detach().numpy()
-        if np.isnan(prediction).any():
-            print(f"❌ NaN-Wert in der Vorhersage für Modell {model['name']}")
-        df_results.loc[:, model["name"]] = prediction
-
+        df_results.loc[:, model["name"]] = model["model"].predict(d_test).detach().numpy()
     return df_results
 
 

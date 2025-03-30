@@ -19,6 +19,7 @@ def create_table(models_names, rows):
 
 
 def get_policy_predictions(trained_models, d_test, data_type="real"):
+    #print("data-type: " + data_type + " -----------------------------------------------------------------------")
     if data_type == "sim":
         d_test = d_test[0]
     n_test = d_test.data["y"].shape[0]
@@ -41,56 +42,86 @@ def get_table_pvalues(trained_models, d_test, data_type="sim"):
             df_results.loc[:, model["name"]] = model["model"].evaluate_policy(d_test, oracle=False,
                                                                               nuisance=nuisance_test,
                                                                               m=model["model"].m)
+        elif data_type == "real_staff":
+            nuisance_test = model["model"].tarnet.predict_nuisance(d_test.data)
+            df_results.loc[:, model["name"]] = model["model"].evaluate_policy(d_test, oracle=False,
+                                                                              nuisance=nuisance_test,
+                                                                              m=model["model"].m)    
     return df_results
-
 
 def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
     print(f"➡️ data_type: {data_type}")  # Debug-Output für den data_type
-    
+
     models_names = get_models_names(trained_models)
     df_results = None
-    
+
     if data_type == "sim":
-        print("🔹 Verwende 'sim' Daten...")
+        print(" Verwende 'sim' Daten...")
         df_results = create_table(models_names, len(d_test))
         for model in models_names:
             try:
                 result = model["model"].evaluate_policy_perturbed(d_test)
                 print(f"✅ Ergebnis für {model['name']}: {result}")
+
                 if result is not None:
-                    df_results.loc[:, model["name"]] = result
+                    result_length = len(result)
+                    # DataFrame anpassen, falls die Länge der Ergebnisse größer ist als die aktuelle Länge
+                    if df_results.shape[0] < result_length:
+                        df_results = df_results.reindex(range(result_length))
+
+                    # Ergebnisse direkt einfügen
+                    df_results.loc[:result_length - 1, model["name"]] = result
+
                 else:
                     print(f"⚠️ Keine gültigen Ergebnisse für Modell {model['name']}")
             except Exception as e:
                 print(f"❌ Fehler beim Bewerten von {model['name']}: {e}")
 
     elif data_type == "real":
-        print("🔹 Verwende 'real' Daten...")
+        print(" Verwende 'real' Daten...")
         df_results = create_table(models_names, 2)
         for model in models_names:
             try:
                 result = model["model"].evaluate_conditional_pvalues(d_test, oracle=False)
                 print(f"✅ Ergebnis für {model['name']}: {result}")
+
                 if result is not None:
-                    df_results.loc[:, model["name"]] = result
+                    result_length = len(result)
+                    if df_results.shape[0] < result_length:
+                        df_results = df_results.reindex(range(result_length))
+
+                    df_results.loc[:result_length - 1, model["name"]] = result
                 else:
                     print(f"⚠️ Keine gültigen Ergebnisse für Modell {model['name']}")
             except Exception as e:
                 print(f"❌ Fehler beim Bewerten von {model['name']}: {e}")
 
     elif data_type == "real_staff":
-        print("🔹 Verwende 'real_staff' Daten...")  # Zusätzlicher Debug-Output
-        df_results = create_table(models_names, 2)
+        print(" Verwende 'real_staff' Daten...")
+        max_length = 0
+        results_dict = {}
+
         for model in models_names:
             try:
                 result = model["model"].evaluate_conditional_pvalues(d_test, oracle=False)
                 print(f"✅ Ergebnis für {model['name']} (real_staff): {result}")
+
                 if result is not None:
-                    df_results.loc[:, model["name"]] = result
+                    result_length = len(result)
+                    results_dict[model['name']] = result
+                    max_length = max(max_length, result_length)
                 else:
                     print(f"⚠️ Keine gültigen Ergebnisse für Modell {model['name']}")
+                    results_dict[model['name']] = [np.nan] # Füge np.nan hinzu, falls result None ist.
             except Exception as e:
                 print(f"❌ Fehler beim Bewerten von {model['name']} (real_staff): {e}")
+                results_dict[model['name']] = [np.nan] # Füge np.nan hinzu, falls Fehler auftritt.
+
+        # DataFrame auf die maximale Ergebnislänge anpassen
+        if max_length > 0:
+            df_results = create_table(models_names, max_length)
+            for model_name, result in results_dict.items():
+                df_results.loc[:len(result) - 1, model_name] = result
 
     else:
         print(f"❌ Unbekannter data_type: {data_type}")
@@ -98,9 +129,9 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
     if df_results is None:
         print("⚠️ Kein gültiges Ergebnis - leeres DataFrame wird zurückgegeben.")
         df_results = pd.DataFrame()  # Fallback für leeres Ergebnis
-    
+
     print(f"➡️ Ergebnis-DataFrame:\n{df_results}")  # Ergebnis anzeigen
-    
+
     return df_results
 
 
@@ -117,15 +148,20 @@ def get_table_action_fairness(trained_models, d_test, data_type="sim"):
     df_results = create_table(models_names, 1)
     for model in models_names:
         if data_type == "sim":
-            df_results.loc[:, model["name"]] = model["model"].evaluate_action_fairness(d_test)
+            result = model["model"].evaluate_action_fairness(d_test)
         elif data_type == "real":
-            # Policy predictions
-            # Sensitive attribute
             s = np.squeeze(d_test.data["s"][:, 1].detach().numpy())
             pi_hat = np.squeeze(model["model"].predict(d_test).detach().numpy())
             test = spearmanr(a=s, b=pi_hat)
             test = test.correlation
-            df_results.loc[:, model["name"]] = np.abs(test)
+            result = np.abs(test)
+        elif data_type == "real_staff":
+            s = np.squeeze(d_test.data["s"][:, 1].detach().numpy())
+            pi_hat = np.squeeze(model["model"].predict(d_test).detach().numpy())
+            test = spearmanr(a=s, b=pi_hat)
+            test = test.correlation
+            result = np.abs(test)
+        df_results.loc[:, model["name"]] = result
     return df_results
 
 

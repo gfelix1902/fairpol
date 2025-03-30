@@ -13,8 +13,7 @@ import random
 import numpy as np
 from data.sim_binary_s2 import generate_datasets
 from data.load_real import load_oregon
-from data.load_real_staff import main as load_staff_data
-from data.load_real_job import load_data_from_csv
+from data.load_real_job import main as load_data_from_csv
 
 def get_device():
     if torch.cuda.is_available():

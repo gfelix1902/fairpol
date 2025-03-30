@@ -1,6 +1,7 @@
 import utils
 import models.fp_net as fp
 import models.unfair_baselines as ub
+import numpy as np 
 
 
 def train_models(config_exp, datasets, seed=1, fixed_params=None):
@@ -18,13 +19,24 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
         utils.set_seed(seed)
         print(f"Hyperparameter-Pfad: {hyper_path + '/nuisance/tarnet'}")
         config_tarnet = get_hyper(config_exp, datasets["d_train"], hyper_path + "/nuisance/tarnet")
+        print(f"TARNet config: {config_tarnet}")  # Log the configuration
         tarnet = ub.train_tarnet(datasets, config_tarnet)
         nuisance["tarnet"] = tarnet["trained_model"]
         tarnet_pred = nuisance["tarnet"].predict_nuisance(datasets["d_test"].data)
+
+        # Log the predictions to check for NaN values
         tarnet_predm1 = tarnet_pred["mu1"].detach().numpy()
         tarnet_predm0 = tarnet_pred["mu0"].detach().numpy()
         tarnet_predp = tarnet_pred["prop"].detach().numpy()
+
+        print(f"TARNet predictions: mu1: {tarnet_predm1[:5]}, mu0: {tarnet_predm0[:5]}, prop: {tarnet_predp[:5]}")  # Log first 5 predictions
+
+        # Check for NaN values in the predictions
+        if np.isnan(tarnet_predm1).any() or np.isnan(tarnet_predm0).any() or np.isnan(tarnet_predp).any():
+            print("Warning: NaN values detected in TARNet predictions!")
+
         pred_ite = tarnet_predm1 - tarnet_predm0
+        print(f"ITE predictions: {pred_ite[:5]}")  # Log the first 5 ITE values
     else:
         nuisance["tarnet"] = None
 
@@ -37,6 +49,7 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
                 config_repr_wstein["model"]["gamma"] = fixed_params["gamma"]
         repr_wstein = fp.train_fair_repr(datasets, config_repr_wstein, loss="wstein")
         nuisance["repr_wstein"] = repr_wstein["trained_model"]
+        print(f"Repr Wasserstein trained: {repr_wstein}")  # Log training result
 
     if "af_conf" in config_af:
         print("Train Repr net domain confusion")
@@ -45,8 +58,9 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
         if fixed_params is not None:
             if "gamma" in fixed_params:
                 config_repr_conf["model"]["gamma"] = fixed_params["gamma"]
-        repr_wstein = fp.train_fair_repr(datasets, config_repr_conf, loss="conf")
-        nuisance["repr_conf"] = repr_wstein["trained_model"]
+        repr_conf = fp.train_fair_repr(datasets, config_repr_conf, loss="conf")
+        nuisance["repr_conf"] = repr_conf["trained_model"]
+        print(f"Repr Domain Confusion trained: {repr_conf}")  # Log training result
 
     if "af_gr" in config_af:
         print("Train Repr net gradient reversal")
@@ -55,8 +69,9 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
         if fixed_params is not None:
             if "gamma" in fixed_params:
                 config_repr_gr["model"]["gamma"] = fixed_params["gamma"]
-        repr_wstein = fp.train_fair_repr(datasets, config_repr_gr, loss="gr")
-        nuisance["repr_gr"] = repr_wstein["trained_model"]
+        repr_gr = fp.train_fair_repr(datasets, config_repr_gr, loss="gr")
+        nuisance["repr_gr"] = repr_gr["trained_model"]
+        print(f"Repr Gradient Reversal trained: {repr_gr}")  # Log training result
 
     # Train policy nets
     print("Policy net training--------------------------------")
@@ -122,4 +137,5 @@ def get_hyper(config_exp, d_train, path_hyper):
     config_model = {}
     config_model["model"] = utils.load_yaml(path_hyper)
     config_hyper = config_exp | config_model | config_data
+    print(f"Loaded hyperparameters: {config_hyper}")  # Log hyperparameters for debugging
     return config_hyper

@@ -29,6 +29,13 @@ if __name__ == "__main__":
                 "english_0.0", "english_1.0", "cohabmarried_0.0", "cohabmarried_1.0",
                 "haschild_0.0", "haschild_1.0"]
 
+    # Debugging-Prints zur Überprüfung der Spaltenanzahl
+    print("Shape von datasets['d_test'].data['x']:", datasets["d_test"].data["x"].shape)
+    print("Anzahl der Spaltennamen in cov_names:", len(cov_names))
+
+    # Falls notwendig, Anzahl der Kovariaten dynamisch anpassen
+    cov_names = cov_names[:datasets["d_test"].data["x"].shape[1]]
+
     df_test = pd.DataFrame(datasets["d_test"].data["x"].detach().numpy(), columns=cov_names)
     df_test["gender"] = datasets["d_test"].data["s"][:, 1].detach().numpy()
 

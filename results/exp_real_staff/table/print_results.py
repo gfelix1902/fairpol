@@ -3,6 +3,10 @@ import pandas as pd
 import numpy as np
 import joblib
 
+def print_df(title, df):
+    print(f"\n{'-'*40}\n{title}\n{'-'*40}")
+    print(df.round(4))
+
 if __name__ == "__main__":
     path = utils.get_project_path() + "/results/exp_real_staff/table/"
 
@@ -10,11 +14,6 @@ if __name__ == "__main__":
     config_exp = utils.load_yaml("/experiments/exp_real_staff/config_real_staff")
     config_data = config_exp["data"]
     datasets = utils.load_data(config_data)
-    predictions = []
-    pvalues = []
-    pvalues1 = []
-    pvalues0 = []
-    af = []
     predictions = joblib.load(path + "predictions.pkl")
     pvalues = joblib.load(path + "pvalues.pkl")
     pvalues1 = joblib.load(path + "pvalues1.pkl")
@@ -48,21 +47,14 @@ if __name__ == "__main__":
     pred_means = predictions.groupby('index').mean().drop(columns=["run"])
     pred_sds = predictions.groupby('index').std().drop(columns=["run"])
 
-    # Printing
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-        print("Pvalues Mean")
-        print(pvalues_means)
-        print("Pvalues SD")
-        print(pvalues_sds)
-        print("Pvalues 1 Mean")
-        print(pvalues1_means)
-        print("Pvalues 1 SD")
-        print(pvalues1_sds)
-        print("Pvalues 0 Mean")
-        print(pvalues0_means)
-        print("Pvalues 0 SD")
-        print(pvalues0_sds)
-        print("AF Mean")
-        print(af_means)
-        print("AF SD")
-        print(af_sds)
+    # Formattierte Ausgabe
+    print_df("Pvalues Mean", pvalues_means)
+    print_df("Pvalues SD", pvalues_sds)
+    print_df("Pvalues 1 Mean", pvalues1_means)
+    print_df("Pvalues 1 SD", pvalues1_sds)
+    print_df("Pvalues 0 Mean", pvalues0_means)
+    print_df("Pvalues 0 SD", pvalues0_sds)
+    print_df("AF Mean", af_means)
+    print_df("AF SD", af_sds)
+    print_df("Predictions Mean", pred_means)
+    print_df("Predictions SD", pred_sds)

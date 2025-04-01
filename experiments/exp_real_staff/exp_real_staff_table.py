@@ -15,10 +15,10 @@ if __name__ == "__main__":
     config_exp["data"]["dataset"] = "real_staff"
 
     for delta in delta_range:
-        print(f"🚀 Starte Experiment mit delta = {delta}...")
+        #print(f"🚀 Starte Experiment mit delta = {delta}...")
 
         # Debug-Ausgabe der Konfiguration
-        print("🔎 Konfiguration:", config_exp)
+        #print("🔎 Konfiguration:", config_exp)
 
         # Führe das Experiment aus
         try:
@@ -28,7 +28,7 @@ if __name__ == "__main__":
                 continue
 
             # Debug-Ausgabe der Ergebnisse
-            print(f"✅ Experiment abgeschlossen. Ergebnisse: {results.keys()}")
+            #print(f"✅ Experiment abgeschlossen. Ergebnisse: {results.keys()}")
 
             # Sicherheitscheck: Stelle sicher, dass alle Schlüssel vorhanden sind
             required_keys = ["pvalues", "pvalues0", "pvalues1", "af", "predictions"]
@@ -49,7 +49,7 @@ if __name__ == "__main__":
             joblib.dump(results["af"], os.path.join(path_results, "af.pkl"))
             joblib.dump(results["predictions"], os.path.join(path_results, "predictions.pkl"))
 
-            print(f"💾 Ergebnisse gespeichert unter: {path_results}")
+            #print(f"💾 Ergebnisse gespeichert unter: {path_results}")
 
         except Exception as e:
             print(f"❌ Fehler während der Experimentdurchführung: {e}")

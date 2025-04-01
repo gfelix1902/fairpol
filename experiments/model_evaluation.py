@@ -19,7 +19,6 @@ def create_table(models_names, rows):
 
 
 def get_policy_predictions(trained_models, d_test, data_type="real"):
-    #print("data-type: " + data_type + " -----------------------------------------------------------------------")
     if data_type == "sim":
         d_test = d_test[0]
     n_test = d_test.data["y"].shape[0]
@@ -50,18 +49,18 @@ def get_table_pvalues(trained_models, d_test, data_type="sim"):
     return df_results
 
 def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
-    print(f"➡️ data_type: {data_type}")  # Debug-Output für den data_type
+    # print(f"➡️ data_type: {data_type}")  # Debug-Output für den data_type
 
     models_names = get_models_names(trained_models)
     df_results = None
 
     if data_type == "sim":
-        print(" Verwende 'sim' Daten...")
+        #print(" Verwende 'sim' Daten...")
         df_results = create_table(models_names, len(d_test))
         for model in models_names:
             try:
                 result = model["model"].evaluate_policy_perturbed(d_test)
-                print(f"✅ Ergebnis für {model['name']}: {result}")
+                #print(f"✅ Ergebnis für {model['name']}: {result}")
 
                 if result is not None:
                     result_length = len(result)
@@ -78,12 +77,12 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
                 print(f"❌ Fehler beim Bewerten von {model['name']}: {e}")
 
     elif data_type == "real":
-        print(" Verwende 'real' Daten...")
+        # print(" Verwende 'real' Daten...")
         df_results = create_table(models_names, 2)
         for model in models_names:
             try:
                 result = model["model"].evaluate_conditional_pvalues(d_test, oracle=False)
-                print(f"✅ Ergebnis für {model['name']}: {result}")
+                # print(f"✅ Ergebnis für {model['name']}: {result}")
 
                 if result is not None:
                     result_length = len(result)
@@ -97,14 +96,14 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
                 print(f"❌ Fehler beim Bewerten von {model['name']}: {e}")
 
     elif data_type == "real_staff":
-        print(" Verwende 'real_staff' Daten...")
+        # print(" Verwende 'real_staff' Daten...")
         max_length = 0
         results_dict = {}
 
         for model in models_names:
             try:
                 result = model["model"].evaluate_conditional_pvalues(d_test, oracle=False)
-                print(f"✅ Ergebnis für {model['name']} (real_staff): {result}")
+                # print(f"✅ Ergebnis für {model['name']} (real_staff): {result}")
 
                 if result is not None:
                     result_length = len(result)
@@ -130,7 +129,7 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
         print("⚠️ Kein gültiges Ergebnis - leeres DataFrame wird zurückgegeben.")
         df_results = pd.DataFrame()  # Fallback für leeres Ergebnis
 
-    print(f"➡️ Ergebnis-DataFrame:\n{df_results}")  # Ergebnis anzeigen
+    # print(f"➡️ Ergebnis-DataFrame:\n{df_results}")  # Ergebnis anzeigen
 
     return df_results
 

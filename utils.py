@@ -36,10 +36,10 @@ def get_project_path():
     return str(path.absolute())
 
 def load_yaml(path_relative):
-    print(f"Lade YAML-Konfigurationsdatei: {path_relative}.yaml")
+    # print(f"Lade YAML-Konfigurationsdatei: {path_relative}.yaml")
     try:
         config = yaml.safe_load(open(get_project_path() + path_relative + ".yaml", 'r'))
-        print("YAML-Konfigurationsdatei erfolgreich geladen.")
+        # print("YAML-Konfigurationsdatei erfolgreich geladen.")
         return config
     except FileNotFoundError:
         print(f"Fehler: YAML-Konfigurationsdatei {path_relative}.yaml nicht gefunden.")
@@ -53,7 +53,7 @@ def save_yaml(path_relative, file):
         yaml.dump(file, outfile, default_flow_style=False)
 
 def load_data(config_data, standardize=True):
-    print(f"Lade Datensatz: {config_data['dataset']}")
+    # print(f"Lade Datensatz: {config_data['dataset']}")
     if config_data["dataset"] == "sim":
         datasets = generate_datasets(config_data)
         print("Simulierter Datensatz erfolgreich geladen.")
@@ -66,7 +66,7 @@ def load_data(config_data, standardize=True):
         # datasets = load_staff_data(config_data)
         datasets = load_data_from_csv(config_data)
         if datasets:
-            print(f"{config_data['dataset']} Datensatz erfolgreich geladen.")
+            # print(f"{config_data['dataset']} Datensatz erfolgreich geladen.")
             return datasets
         else:
             print(f"Fehler beim Laden des {config_data['dataset']} Datensatzes.")

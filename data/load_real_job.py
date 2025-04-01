@@ -78,11 +78,11 @@ def extract_features_and_targets(df_train: pd.DataFrame, df_val: pd.DataFrame, d
 def preprocess_data(data: pd.DataFrame) -> tuple:
     """Preprocess data: remove missing values, impute, and split into train/val/test."""
 
-    print(f"Anzahl der Zeilen vor dem Entfernen von fehlenden Werten: {len(data)}")
+    #print(f"Anzahl der Zeilen vor dem Entfernen von fehlenden Werten: {len(data)}")
 
     data = data.dropna(subset=[OUTCOME_COL, TREAT_COL] + COVARIATE_COLS)
 
-    print(f"Anzahl der Zeilen nach dem Entfernen von fehlenden Werten: {len(data)}")
+    #print(f"Anzahl der Zeilen nach dem Entfernen von fehlenden Werten: {len(data)}")
 
     if data.empty:
         print("Warnung: Daten sind nach dem Entfernen von fehlenden Werten leer!")
@@ -95,7 +95,6 @@ def preprocess_data(data: pd.DataFrame) -> tuple:
     return extract_features_and_targets(df_train, df_val, df_test)
 
 def create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test) -> dict:
-    # ... (Rest der create_datasets-Funktion bleibt unverändert)
     x_types = [
         "continuous" if col in CONTINUOUS_COLS else
         "categorical" if col in CATEGORICAL_COLS else
@@ -125,7 +124,6 @@ def create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_v
     }
 
 def main(config_data):
-    """Main function to load, preprocess, and create datasets."""
     try:
         project_path = utils.get_project_path()
         path = os.path.join(project_path, "JC_processed.csv")
@@ -133,7 +131,7 @@ def main(config_data):
         if data is not None:
             y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test = preprocess_data(data)
             datasets = create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test)
-            print(datasets["d_train"].data["y"].shape)
+            #print(datasets["d_train"].data["y"].shape)
             return datasets
         else:
             print("Fehler beim Laden der Daten!")

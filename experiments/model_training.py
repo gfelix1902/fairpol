@@ -11,15 +11,15 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
     nuisance = {}
 
     # Train nuisance models
-    print("Nuisance training----------------------------------")
+    # print("Nuisance training----------------------------------")
 
     if not config_exp["experiment"]["oracle_nuisance"]:
         # Nuisance model TARNet
-        print("Train nuisance TARNet")
+        # print("Train nuisance TARNet")
         utils.set_seed(seed)
-        print(f"Hyperparameter-Pfad: {hyper_path + '/nuisance/tarnet'}")
+        # print(f"Hyperparameter-Pfad: {hyper_path + '/nuisance/tarnet'}")
         config_tarnet = get_hyper(config_exp, datasets["d_train"], hyper_path + "/nuisance/tarnet")
-        print(f"TARNet config: {config_tarnet}")  # Log the configuration
+        # print(f"TARNet config: {config_tarnet}")  # Log the configuration
         tarnet = ub.train_tarnet(datasets, config_tarnet)
         nuisance["tarnet"] = tarnet["trained_model"]
         tarnet_pred = nuisance["tarnet"].predict_nuisance(datasets["d_test"].data)
@@ -29,19 +29,19 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
         tarnet_predm0 = tarnet_pred["mu0"].detach().numpy()
         tarnet_predp = tarnet_pred["prop"].detach().numpy()
 
-        print(f"TARNet predictions: mu1: {tarnet_predm1[:5]}, mu0: {tarnet_predm0[:5]}, prop: {tarnet_predp[:5]}")  # Log first 5 predictions
+        # print(f"TARNet predictions: mu1: {tarnet_predm1[:5]}, mu0: {tarnet_predm0[:5]}, prop: {tarnet_predp[:5]}")  # Log first 5 predictions
 
         # Check for NaN values in the predictions
         if np.isnan(tarnet_predm1).any() or np.isnan(tarnet_predm0).any() or np.isnan(tarnet_predp).any():
             print("Warning: NaN values detected in TARNet predictions!")
 
         pred_ite = tarnet_predm1 - tarnet_predm0
-        print(f"ITE predictions: {pred_ite[:5]}")  # Log the first 5 ITE values
+        # print(f"ITE predictions: {pred_ite[:5]}")  # Log the first 5 ITE values
     else:
         nuisance["tarnet"] = None
 
     if "af_wstein" in config_af:
-        print("Train Repr net wasserstein")
+        # print("Train Repr net wasserstein")
         utils.set_seed(seed)
         config_repr_wstein = get_hyper(config_exp, datasets["d_train"], hyper_path + "/nuisance/repr_net_wstein")
         if fixed_params is not None:
@@ -49,10 +49,10 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
                 config_repr_wstein["model"]["gamma"] = fixed_params["gamma"]
         repr_wstein = fp.train_fair_repr(datasets, config_repr_wstein, loss="wstein")
         nuisance["repr_wstein"] = repr_wstein["trained_model"]
-        print(f"Repr Wasserstein trained: {repr_wstein}")  # Log training result
+        # print(f"Repr Wasserstein trained: {repr_wstein}")  # Log training result
 
     if "af_conf" in config_af:
-        print("Train Repr net domain confusion")
+        # print("Train Repr net domain confusion")
         utils.set_seed(seed)
         config_repr_conf = get_hyper(config_exp, datasets["d_train"], hyper_path + "/nuisance/repr_net_conf")
         if fixed_params is not None:
@@ -60,10 +60,10 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
                 config_repr_conf["model"]["gamma"] = fixed_params["gamma"]
         repr_conf = fp.train_fair_repr(datasets, config_repr_conf, loss="conf")
         nuisance["repr_conf"] = repr_conf["trained_model"]
-        print(f"Repr Domain Confusion trained: {repr_conf}")  # Log training result
+        # print(f"Repr Domain Confusion trained: {repr_conf}")  # Log training result
 
     if "af_gr" in config_af:
-        print("Train Repr net gradient reversal")
+        # print("Train Repr net gradient reversal")
         utils.set_seed(seed)
         config_repr_gr = get_hyper(config_exp, datasets["d_train"], hyper_path + "/nuisance/repr_net_gr")
         if fixed_params is not None:
@@ -71,10 +71,10 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
                 config_repr_gr["model"]["gamma"] = fixed_params["gamma"]
         repr_gr = fp.train_fair_repr(datasets, config_repr_gr, loss="gr")
         nuisance["repr_gr"] = repr_gr["trained_model"]
-        print(f"Repr Gradient Reversal trained: {repr_gr}")  # Log training result
+        # print(f"Repr Gradient Reversal trained: {repr_gr}")  # Log training result
 
     # Train policy nets
-    print("Policy net training--------------------------------")
+    # print("Policy net training--------------------------------")
     trained_models = {}
     for model_config in model_configs:
         utils.set_seed(seed)
@@ -93,7 +93,7 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
             trained_models["oracle_af"] = {"trained_model": oracle_trained}
 
         if model_config["name"] == "oracle_trained":
-            print("Trained oracle")
+            # print("Trained oracle")
             config_oracle = get_hyper(config_exp, datasets["d_train"], hyper_path + "/policy_nets/oracle")
             oracle_trained = ub.train_policynet_unfair(datasets, config_oracle)
             trained_models["oracle_trained"] = oracle_trained
@@ -103,7 +103,7 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
             vf = model_config["value_fair"]
             m = config_exp["experiment"]["m"]
             model_name = "fpnet_" + vf + "_" + m
-            print(f"Train {model_name}")
+            # print(f"Train {model_name}")
             config_fpnet = get_hyper(config_exp, datasets["d_train"],
                                             hyper_path + "/policy_nets/" + af + "/" + model_name)
             model_name = model_name + "_" + af
@@ -137,5 +137,5 @@ def get_hyper(config_exp, d_train, path_hyper):
     config_model = {}
     config_model["model"] = utils.load_yaml(path_hyper)
     config_hyper = config_exp | config_model | config_data
-    print(f"Loaded hyperparameters: {config_hyper}")  # Log hyperparameters for debugging
+    # print(f"Loaded hyperparameters: {config_hyper}")  # Log hyperparameters for debugging
     return config_hyper

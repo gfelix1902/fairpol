@@ -7,15 +7,15 @@ data:
   y_type: "continuous" # Ihr Outcome ist "earny4", was kontinuierlich ist
   outcome_col: "earny4"
   treat_col: "assignment"
-  sensitive_col: "female"
-  covariate_cols: ["age", "educ", "white", "black", "hispanic", "english", "cohabmarried", "haschild", "everwkd", "mwearn", "hhsize", "educmum", "educdad", "welfarechild", "health", "smoke", "alcohol"]
-  categorical_cols: ["white", "black", "hispanic", "english", "cohabmarried", "haschild", "everwkd"]
+  sensitive_col: ["female", "white", "black", "hispanic"]
+  covariate_cols: ["age", "educ", "english", "cohabmarried", "haschild", "everwkd", "mwearn", "hhsize", "educmum", "educdad", "welfarechild", "health", "smoke", "alcohol"]
+  categorical_cols: ["english", "cohabmarried", "haschild", "everwkd"]
   continuous_cols: ["age", "educ", "mwearn", "hhsize", "educmum", "educdad"]
   ordinal_cols: ["welfarechild", "health", "smoke", "alcohol"]
 
 # Configuration for experiment
 experiment:
-  runs: 20
+  runs: 10
   seed: 12345
   plotting: False
   neptune: True

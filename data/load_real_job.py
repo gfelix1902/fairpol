@@ -123,6 +123,39 @@ def create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_v
         "d_test": d_test
     }
 
+def calculate_statistics(sensitive_attrs, predictions, attribute_names):
+    statistics = {}
+
+    for i, attr in enumerate(attribute_names):
+        print(f"\n🔍 Berechnung der Statistiken für: {attr}")
+
+        # Werte für die Gruppen (z. B. 0 und 1) extrahieren
+        group_0 = predictions[sensitive_attrs[:, i] == 0]
+        group_1 = predictions[sensitive_attrs[:, i] == 1]
+
+        # Berechnung von Mean und STD
+        mean_0, std_0 = group_0.mean(), group_0.std()
+        mean_1, std_1 = group_1.mean(), group_1.std()
+
+        # Berechnung der Differenz
+        mean_diff = abs(mean_1 - mean_0)
+
+        # Speichern der Ergebnisse
+        statistics[attr] = {
+            "mean_0": mean_0,
+            "std_0": std_0,
+            "mean_1": mean_1,
+            "std_1": std_1,
+            "mean_diff": mean_diff
+        }
+
+        # Ausgabe der Ergebnisse
+        print(f"  Gruppe 0 (mean={mean_0:.4f}, std={std_0:.4f})")
+        print(f"  Gruppe 1 (mean={mean_1:.4f}, std={std_1:.4f})")
+        print(f"  Differenz der Mittelwerte: {mean_diff:.4f}")
+
+    return statistics
+
 def main(config_data):
     try:
         project_path = utils.get_project_path()
@@ -131,11 +164,20 @@ def main(config_data):
         if data is not None:
             y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test = preprocess_data(data)
             datasets = create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test)
-            #print(datasets["d_train"].data["y"].shape)
-            return datasets
+
+            # Beispiel: Vorhersagen (tau_hat) generieren
+            predictions = np.random.rand(len(s_test))  # Ersetze dies durch deine tatsächlichen Vorhersagen
+
+            # Statistiken für sensitive Attribute berechnen
+            statistics = calculate_statistics(s_test, predictions, SENSITIVE_ATTRS)
+
+            # Ergebnisse speichern oder weiterverarbeiten
+            import json
+            with open("sensitive_statistics.json", "w") as f:
+                json.dump(statistics, f, indent=4)
+
+            print("\n✅ Statistiken für sensitive Attribute berechnet und gespeichert in 'sensitive_statistics.json'.")
         else:
             print("Fehler beim Laden der Daten!")
-            return {"d_train": None, "d_val": None, "d_test": None}
     except Exception as e:
         print(f"Fehler während der Datenverarbeitung: {e}")
-        return {"d_train": None, "d_val": None, "d_test": None}

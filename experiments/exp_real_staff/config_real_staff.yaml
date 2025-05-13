@@ -15,7 +15,7 @@ data:
 
 # Configuration for experiment
 experiment:
-  runs: 10
+  runs: 5
   seed: 12345
   plotting: False
   neptune: True
@@ -26,18 +26,19 @@ experiment:
   save_results: True
   m: "dr"
   models:
-    - name: "fpnet"
-      action_fair: "auf"
-      value_fair: "vuf"
-    - name: "fpnet"
-      action_fair: "af_conf"
-      value_fair: "vuf"
-    - name: "fpnet"
-      action_fair: "af_conf"
-      value_fair: "vmm"
-    - name: "fpnet"
-      action_fair: "af_conf"
-      value_fair: "vef"
-    - name: "fpnet"
-      action_fair: "auf"
-      value_fair: "vef"
+    - name: "ols"
+    # - name: "fpnet"
+    #   action_fair: "auf"
+    #   value_fair: "vuf"
+    # - name: "fpnet"
+    #   action_fair: "af_conf"
+    #   value_fair: "vuf"
+    # - name: "fpnet"
+    #   action_fair: "af_conf"
+    #   value_fair: "vmm"
+    # - name: "fpnet"
+    #   action_fair: "af_conf"
+    #   value_fair: "vef"
+    # - name: "fpnet"
+    #   action_fair: "auf"
+    #   value_fair: "vef"

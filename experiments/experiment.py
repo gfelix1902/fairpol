@@ -27,9 +27,9 @@ def perform_experiment(config, fixed_params=None):
         utils.set_seed(seed)
 
         try:
-            datasets = utils.load_data(config_data)
+            datasets = utils.load_data(config_data, seed=seed)
             trained_models = model_training.train_models(config_exp, datasets, seed, fixed_params=fixed_params)
-            policy_values = model_evaluation.get_table_pvalues(trained_models, datasets["d_test"], data_type=config_data["dataset"])
+            policy_values = model_evaluation.get_policy_predictions(trained_models, datasets["d_test"], data_type=config_data["dataset"])
             policy_values_cond = model_evaluation.get_table_pvalues_conditional(trained_models, datasets["d_test"], data_type=config_data["dataset"])
             policy_cor = model_evaluation.get_table_action_fairness(trained_models, datasets["d_test"], data_type=config_data["dataset"])
             df_pred = model_evaluation.get_policy_predictions(trained_models, datasets["d_test"], data_type=config_data["dataset"])

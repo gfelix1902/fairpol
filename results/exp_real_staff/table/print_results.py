@@ -2,63 +2,108 @@ import utils
 import pandas as pd
 import numpy as np
 import joblib
-import os
 
-def load_and_unpack_data(path):
-    """Loads and unpacks data from pickle files."""
-    try:
-        predictions = joblib.load(os.path.join(path, "predictions.pkl"))
-        pvalues = joblib.load(os.path.join(path, "pvalues.pkl"))
-        pvalues1 = joblib.load(os.path.join(path, "pvalues1.pkl"))
-        pvalues0 = joblib.load(os.path.join(path, "pvalues0.pkl"))
-        af = joblib.load(os.path.join(path, "af.pkl"))
-        return predictions, pvalues, pvalues1, pvalues0, af
-    except FileNotFoundError as e:
-        print(f"Error loading pickle files: {e}")
-        return None, None, None, None, None
+def print_df(title, df):
+    print(f"\n{'-'*40}\n{title}\n{'-'*40}")
+    print(df.round(4))
 
-def unpack_numpy_arrays(df):
-    """Unpacks numpy arrays within a DataFrame."""
-    if isinstance(df, pd.DataFrame):
+if __name__ == "__main__":
+    path = utils.get_project_path() + "/results/exp_real_staff/table/"
+
+    # Load data
+    config_exp = utils.load_yaml("/experiments/exp_real_staff/config_real_staff")
+    config_data = config_exp["data"]
+    datasets = utils.load_data(config_data)
+    predictions = joblib.load(path + "predictions.pkl")
+    pvalues = joblib.load(path + "pvalues.pkl")
+    pvalues1 = joblib.load(path + "pvalues1.pkl")
+    pvalues0 = joblib.load(path + "pvalues0.pkl")
+    af = joblib.load(path + "af.pkl")
+
+    # Funktion zum Entpacken von NumPy-Arrays in DataFrames
+    def unpack_numpy_arrays(df):
         for col in df.columns:
             df[col] = df[col].apply(lambda x: x[0] if isinstance(x, np.ndarray) and x.ndim > 0 else x)
         return df
-    else:
-        print("Error: Input is not a Pandas DataFrame.")
-        return None
 
-def calculate_and_print_stats(predictions, pvalues, pvalues1, pvalues0, af):
-    """Calculates and prints statistics."""
-    if pvalues is not None:
-        pvalues_means = pvalues.mean().to_frame().transpose()
-        pvalues_sds = pvalues.std().to_frame().transpose() if len(pvalues) > 1 else pd.DataFrame(np.nan, index=[0], columns=pvalues.columns)
-        pvalues1_means = pvalues1.mean().to_frame().transpose()
-        pvalues1_sds = pvalues1.std().to_frame().transpose() if len(pvalues1) > 1 else pd.DataFrame(np.nan, index=[0], columns=pvalues1.columns)
-        pvalues0_means = pvalues0.mean().to_frame().transpose()
-        pvalues0_sds = pvalues0.std().to_frame().transpose() if len(pvalues0) > 1 else pd.DataFrame(np.nan, index=[0], columns=pvalues0.columns)
-        af_means = af.mean().to_frame().transpose()
-        af_sds = af.std().to_frame().transpose() if len(af) > 1 else pd.DataFrame(np.nan, index=[0], columns=af.columns)
+    # Entpacke die NumPy-Arrays
+    pvalues = unpack_numpy_arrays(pvalues)
+    pvalues1 = unpack_numpy_arrays(pvalues1)
+    pvalues0 = unpack_numpy_arrays(pvalues0)
+    af = unpack_numpy_arrays(af)
 
-        predictions["index"] = predictions.index
-        pred_means = predictions.groupby('index').mean().drop(columns=["run"])
-        pred_sds = predictions.groupby('index').std().drop(columns=["run"])
+    # Policy values
+    pvalues_means = pvalues.mean().to_frame().transpose()
+    pvalues_sds = pvalues.std().to_frame().transpose()
+    pvalues1_means = pvalues1.mean().to_frame().transpose()
+    pvalues1_sds = pvalues1.std().to_frame().transpose()
+    pvalues0_means = pvalues0.mean().to_frame().transpose()
+    pvalues0_sds = pvalues0.std().to_frame().transpose()
+    af_means = af.mean().to_frame().transpose()
+    af_sds = af.std().to_frame().transpose()
 
-        with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-            print("Pvalues Mean\n", pvalues_means)
-            print("Pvalues SD\n", pvalues_sds)
-            print("Pvalues 1 Mean\n", pvalues1_means)
-            print("Pvalues 1 SD\n", pvalues1_sds)
-            print("Pvalues 0 Mean\n", pvalues0_means)
-            print("Pvalues 0 SD\n", pvalues0_sds)
-            print("AF Mean\n", af_means)
-            print("AF SD\n", af_sds)
-            
-if __name__ == "__main__":
-    path = utils.get_project_path() + "/results/exp_real_staff/table/"
-    predictions, pvalues, pvalues1, pvalues0, af = load_and_unpack_data(path)
-    if pvalues is not None:
-        pvalues = unpack_numpy_arrays(pvalues)
-        pvalues1 = unpack_numpy_arrays(pvalues1)
-        pvalues0 = unpack_numpy_arrays(pvalues0)
-        af = unpack_numpy_arrays(af)
-        calculate_and_print_stats(predictions, pvalues, pvalues1, pvalues0, af)
+    # Predictions
+    predictions["index"] = predictions.index
+    pred_means = predictions.groupby('index').mean().drop(columns=["run"])
+    pred_sds = predictions.groupby('index').std().drop(columns=["run"])
+
+    # Formattierte Ausgabe
+    print_df("Pvalues Mean", pvalues_means)
+    print_df("Pvalues SD", pvalues_sds)
+    print_df("Pvalues 1 Mean", pvalues1_means)
+    print_df("Pvalues 1 SD", pvalues1_sds)
+    print_df("Pvalues 0 Mean", pvalues0_means)
+    print_df("Pvalues 0 SD", pvalues0_sds)
+    print_df("AF Mean", af_means)
+    print_df("AF SD", af_sds)
+    print_df("Predictions Mean", pred_means)
+    print_df("Predictions SD", pred_sds)
+
+    # Plot OLS predictions if present
+    if "ols" in pred_means.columns:
+        import matplotlib.pyplot as plt
+
+        # True values from test set
+        y_true = datasets["d_test"].data["y"].cpu().numpy().ravel()
+        # Align indices if necessary
+        y_pred = pred_means["ols"].values
+        if len(y_true) != len(y_pred):
+            print("Warning: Length mismatch between y_true and y_pred. Plot may be incorrect.")
+
+        # 1. True vs. Predicted
+        plt.figure(figsize=(7, 7))
+        plt.scatter(y_true, y_pred, alpha=0.5, label="Samples")
+        # Regression line
+        m, b = np.polyfit(y_true, y_pred, 1)
+        plt.plot(y_true, m*y_true + b, color='blue', label='Fit')
+        # Diagonal
+        plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'r--', label='Ideal')
+        plt.xlabel("True Values")
+        plt.ylabel("Predicted Values")
+        plt.title("OLS: True vs. Predicted")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+        # 2. Residuals
+        residuals = y_true - y_pred
+        plt.figure(figsize=(7, 4))
+        plt.scatter(y_pred, residuals, alpha=0.5)
+        plt.axhline(0, color='red', linestyle='--')
+        plt.xlabel("Predicted Values")
+        plt.ylabel("Residuals")
+        plt.title("OLS: Residual Plot")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+        # 3. Residuals Histogram
+        plt.figure(figsize=(6, 4))
+        plt.hist(residuals, bins=30, alpha=0.7, color='gray')
+        plt.xlabel("Residual")
+        plt.ylabel("Frequency")
+        plt.title("OLS: Residuals Distribution")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()

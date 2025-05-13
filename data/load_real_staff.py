@@ -89,6 +89,7 @@ def preprocess_data(data: pd.DataFrame, seed=None) -> tuple:
 
     return y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test
 
+
 def split_data(data: pd.DataFrame, seed=None) -> tuple:
     f_train = 0.7
     f_val = 0.15

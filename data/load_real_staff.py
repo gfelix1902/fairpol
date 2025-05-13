@@ -38,12 +38,12 @@ def load_data() -> pd.DataFrame:
         print(f"❌ Fehler: Datei nicht gefunden unter {path}.")
         return None
 
-def preprocess_data(data: pd.DataFrame) -> tuple:
+def preprocess_data(data: pd.DataFrame, seed=None) -> tuple:
     """Preprocess data by encoding and handling missing values."""
 
     # Fehlende Werte mit IterativeImputer auffüllen
     imp = IterativeImputer(max_iter=10, random_state=0)
-    data = pd.DataFrame(imp.fit_transform(data), columns=data.columns)
+    data_imputed = pd.DataFrame(imp.fit_transform(data), columns=data.columns)
 
     print("\n✅ Keine NaN-Werte mehr nach der Imputation.")
 
@@ -51,7 +51,7 @@ def preprocess_data(data: pd.DataFrame) -> tuple:
     plt.figure(figsize=(14, 10))
     for i, col in enumerate(CONTINUOUS_COLS[:6]):
         plt.subplot(3, 2, i + 1)
-        sns.histplot(data[col], kde=True)
+        sns.histplot(data_imputed[col], kde=True)
         plt.title(f"Verteilung von {col}")
     plt.tight_layout()
     plt.show()
@@ -59,15 +59,10 @@ def preprocess_data(data: pd.DataFrame) -> tuple:
     # 🔎 3. Kategoriale Werte überprüfen
     for col in CATEGORICAL_COLS:
         print(f"\n🔑 Werte in '{col}':")
-        print(data[col].value_counts())
+        print(data_imputed[col].value_counts())
 
     # Train/Val/Test Split
-    f_train = 0.7
-    f_val = 0.15
-    df_train, df_val, df_test = np.split(
-        data.sample(frac=1, random_state=42),
-        [int(f_train * len(data)), int((f_train + f_val) * len(data))]
-    )
+    df_train, df_val, df_test = split_data(data_imputed, seed=seed)
 
     print(f"\n✅ Train/Val/Test-Split: {len(df_train)}/{len(df_val)}/{len(df_test)}")
 
@@ -94,13 +89,22 @@ def preprocess_data(data: pd.DataFrame) -> tuple:
 
     return y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test
 
-def main():
+def split_data(data: pd.DataFrame, seed=None) -> tuple:
+    f_train = 0.7
+    f_val = 0.15
+    df_train, df_val, df_test = np.split(
+        data.sample(frac=1, random_state=seed),
+        [int(f_train * len(data)), int((f_train + f_val) * len(data))]
+    )
+    return df_train, df_val, df_test
+
+def main(config_data, seed=None):
     """Main function to load and preprocess the data."""
     data = load_data()
 
     if data is not None:
         print("\n🚀 Beginne Preprocessing...")
-        y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test = preprocess_data(data)
+        y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test = preprocess_data(data, seed=seed)
         print("\n✅ Daten wurden erfolgreich geladen und verarbeitet!")
     else:
         print("\n❌ Fehler beim Laden der Daten!")

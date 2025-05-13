@@ -2,6 +2,8 @@ import utils
 import models.fp_net as fp
 import models.unfair_baselines as ub
 import numpy as np 
+from models.ols_model import OLSModel
+import pandas as pd # Add this import if not already present
 
 
 def train_models(config_exp, datasets, seed=1, fixed_params=None):
@@ -124,6 +126,24 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
                 trained_models[model_name] = fp.train_fpnet(datasets, config_fpnet, nuisance["tarnet"], nuisance["repr_gr"])
             else:
                 trained_models[model_name] = fp.train_fpnet(datasets, config_fpnet, nuisance["tarnet"])
+
+        if model_config["name"] == "ols":
+            model_name = "ols"
+            ols_model = OLSModel(standardize=False) # Or True, depending on your needs
+
+            # Extrahiere Features und Zielvariable
+            X_train_tensor = datasets["d_train"].data["x"]
+            y_train_tensor = datasets["d_train"].data["y"]
+
+            # Konvertiere Tensoren zu Pandas DataFrame/Series
+            X_train_df = pd.DataFrame(X_train_tensor.cpu().numpy())
+            y_train_series = pd.Series(y_train_tensor.cpu().numpy().ravel()) # .ravel() to ensure 1D
+
+            # Trainiere das OLS-Modell
+            ols_model.train(X_train_df, y_train_series)
+
+            # Speichere das trainierte Modell
+            trained_models[model_name] = {"trained_model": ols_model}
 
     return trained_models
 

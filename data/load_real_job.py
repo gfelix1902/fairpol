@@ -46,12 +46,12 @@ def validate_imputed_data(data: pd.DataFrame) -> None:
     if (data.values < -1e10).any() or (data.values > 1e10).any():
         print("❌ Sehr große/kleine Werte nach der Imputation gefunden!")
 
-def split_data(data: pd.DataFrame) -> tuple:
+def split_data(data: pd.DataFrame, seed=None) -> tuple:
     """Split data into train, validation, and test sets."""
     f_train = 0.7
     f_val = 0.15
     df_train, df_val, df_test = np.split(
-        data.sample(frac=1, random_state=42),
+        data.sample(frac=1, random_state=seed),
         [int(f_train * len(data)), int((f_train + f_val) * len(data))]
     )
     return df_train, df_val, df_test
@@ -75,7 +75,7 @@ def extract_features_and_targets(df_train: pd.DataFrame, df_val: pd.DataFrame, d
 
     return y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test
 
-def preprocess_data(data: pd.DataFrame) -> tuple:
+def preprocess_data(data: pd.DataFrame, seed=None) -> tuple:
     """Preprocess data: remove missing values, impute, and split into train/val/test."""
 
     #print(f"Anzahl der Zeilen vor dem Entfernen von fehlenden Werten: {len(data)}")
@@ -91,7 +91,7 @@ def preprocess_data(data: pd.DataFrame) -> tuple:
     data_imputed = impute_missing_values(data)
     validate_imputed_data(data_imputed)
 
-    df_train, df_val, df_test = split_data(data_imputed)
+    df_train, df_val, df_test = split_data(data_imputed, seed=seed)
     return extract_features_and_targets(df_train, df_val, df_test)
 
 def create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test) -> dict:
@@ -123,15 +123,14 @@ def create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_v
         "d_test": d_test
     }
 
-def main(config_data):
+def main(config_data, seed=None):
     try:
         project_path = utils.get_project_path()
         path = os.path.join(project_path, "JC_processed.csv")
         data = load_data(path)
         if data is not None:
-            y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test = preprocess_data(data)
+            y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test = preprocess_data(data, seed=seed)
             datasets = create_datasets(y_train, a_train, s_train, x_train, y_val, a_val, s_val, x_val, y_test, a_test, s_test, x_test)
-            #print(datasets["d_train"].data["y"].shape)
             return datasets
         else:
             print("Fehler beim Laden der Daten!")

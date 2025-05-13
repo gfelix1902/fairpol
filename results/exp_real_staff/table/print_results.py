@@ -58,3 +58,52 @@ if __name__ == "__main__":
     print_df("AF SD", af_sds)
     print_df("Predictions Mean", pred_means)
     print_df("Predictions SD", pred_sds)
+
+    # Plot OLS predictions if present
+    if "ols" in pred_means.columns:
+        import matplotlib.pyplot as plt
+
+        # True values from test set
+        y_true = datasets["d_test"].data["y"].cpu().numpy().ravel()
+        # Align indices if necessary
+        y_pred = pred_means["ols"].values
+        if len(y_true) != len(y_pred):
+            print("Warning: Length mismatch between y_true and y_pred. Plot may be incorrect.")
+
+        # 1. True vs. Predicted
+        plt.figure(figsize=(7, 7))
+        plt.scatter(y_true, y_pred, alpha=0.5, label="Samples")
+        # Regression line
+        m, b = np.polyfit(y_true, y_pred, 1)
+        plt.plot(y_true, m*y_true + b, color='blue', label='Fit')
+        # Diagonal
+        plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'r--', label='Ideal')
+        plt.xlabel("True Values")
+        plt.ylabel("Predicted Values")
+        plt.title("OLS: True vs. Predicted")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+        # 2. Residuals
+        residuals = y_true - y_pred
+        plt.figure(figsize=(7, 4))
+        plt.scatter(y_pred, residuals, alpha=0.5)
+        plt.axhline(0, color='red', linestyle='--')
+        plt.xlabel("Predicted Values")
+        plt.ylabel("Residuals")
+        plt.title("OLS: Residual Plot")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+        # 3. Residuals Histogram
+        plt.figure(figsize=(6, 4))
+        plt.hist(residuals, bins=30, alpha=0.7, color='gray')
+        plt.xlabel("Residual")
+        plt.ylabel("Frequency")
+        plt.title("OLS: Residuals Distribution")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()

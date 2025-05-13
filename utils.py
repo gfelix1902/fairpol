@@ -52,7 +52,7 @@ def save_yaml(path_relative, file):
     with open(get_project_path() + path_relative + ".yaml", 'w') as outfile:
         yaml.dump(file, outfile, default_flow_style=False)
 
-def load_data(config_data, standardize=True):
+def load_data(config_data, standardize=True, seed=None):
     # print(f"Lade Datensatz: {config_data['dataset']}")
     if config_data["dataset"] == "sim":
         datasets = generate_datasets(config_data)
@@ -63,8 +63,7 @@ def load_data(config_data, standardize=True):
         print("Oregon Datensatz erfolgreich geladen.")
         return datasets
     elif config_data["dataset"] == "real_staff" or config_data["dataset"] == "job_corps":
-        # datasets = load_staff_data(config_data)
-        datasets = load_data_from_csv(config_data)
+        datasets = load_data_from_csv(config_data, seed=seed)
         if datasets:
             # print(f"{config_data['dataset']} Datensatz erfolgreich geladen.")
             return datasets

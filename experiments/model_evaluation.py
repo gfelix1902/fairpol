@@ -19,14 +19,26 @@ def create_table(models_names, rows):
 
 
 def get_policy_predictions(trained_models, d_test, data_type="real"):
-    if data_type == "sim":
-        d_test = d_test[0]
-    n_test = d_test.data["y"].shape[0]
     models_names = get_models_names(trained_models)
-    names = [model["name"] for model in models_names]
-    df_results = pd.DataFrame(columns=names, index=range(n_test))
+    df_results = pd.DataFrame(columns=[model["name"] for model in models_names], index=range(d_test.data["y"].shape[0]))
+
     for model in models_names:
-        df_results.loc[:, model["name"]] = model["model"].predict(d_test).detach().numpy()
+        model_name = model["name"]
+        model_instance = model["model"]
+
+        if model_name == "ols":
+            # Vorhersagen mit OLS
+            X_test_tensor = d_test.data["x"]
+            X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy())
+            df_results[model_name] = model_instance.predict(X_test_df)
+
+        elif "fpnet" in model_name:
+            # Vorhersagen mit neuronalen Netzen
+            df_results[model_name] = model_instance.predict(d_test).detach().numpy()
+
+        else:
+            print(f"⚠️ Unbekanntes Modell: {model_name}")
+
     return df_results
 
 
@@ -95,26 +107,44 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
             except Exception as e:
                 print(f"❌ Fehler beim Bewerten von {model['name']}: {e}")
 
-    elif data_type == "real_staff":
+    elif data_type == "real_staff" or data_type == "job_corps": # Added job_corps
         # print(" Verwende 'real_staff' Daten...")
         max_length = 0
         results_dict = {}
 
-        for model in models_names:
+        for model_info in models_names: # Renamed model to model_info to avoid conflict
+            model_instance = model_info["model"]
+            model_name_str = model_info["name"]
             try:
-                result = model["model"].evaluate_conditional_pvalues(d_test, oracle=False)
-                # print(f"✅ Ergebnis für {model['name']} (real_staff): {result}")
+                if model_name_str == "ols":
+                    X_test_tensor = d_test.data["x"]
+                    y_test_tensor = d_test.data["y"]
+                    s_test_tensor = d_test.data["s"] # Assuming s_test is needed
 
+                    X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy())
+                    y_test_series = pd.Series(y_test_tensor.cpu().numpy().ravel())
+                    # For s_test, if it's multi-column (e.g. one-hot), decide how to pass it.
+                    # The dummy OLSModel.evaluate_conditional_pvalues doesn't use s_test yet.
+                    # If s_test is single column sensitive attribute:
+                    s_test_series = pd.Series(s_test_tensor.cpu().numpy().ravel())
+                    # If s_test is multi-column and you need a specific one:
+                    # s_test_series = pd.Series(s_test_tensor[:, relevant_s_column_index].cpu().numpy().ravel())
+
+                    result = model_instance.evaluate_conditional_pvalues(X_test_df, y_test_series, s_test_series)
+                else: # For fpnet and other models expecting Static_Dataset
+                    result = model_instance.evaluate_conditional_pvalues(d_test, oracle=False)
+                
+                # ... rest of the logic for handling result ...
                 if result is not None:
                     result_length = len(result)
-                    results_dict[model['name']] = result
+                    results_dict[model_name_str] = result
                     max_length = max(max_length, result_length)
                 else:
-                    print(f"⚠️ Keine gültigen Ergebnisse für Modell {model['name']}")
-                    results_dict[model['name']] = [np.nan] # Füge np.nan hinzu, falls result None ist.
+                    print(f"⚠️ Keine gültigen Ergebnisse für Modell {model_name_str}")
+                    results_dict[model_name_str] = [np.nan] 
             except Exception as e:
-                print(f"❌ Fehler beim Bewerten von {model['name']} (real_staff): {e}")
-                results_dict[model['name']] = [np.nan] # Füge np.nan hinzu, falls Fehler auftritt.
+                print(f"❌ Fehler beim Bewerten von {model_name_str} ({data_type}): {e}")
+                results_dict[model_name_str] = [np.nan] 
 
         # DataFrame auf die maximale Ergebnislänge anpassen
         if max_length > 0:
@@ -154,12 +184,37 @@ def get_table_action_fairness(trained_models, d_test, data_type="sim"):
             test = spearmanr(a=s, b=pi_hat)
             test = test.correlation
             result = np.abs(test)
-        elif data_type == "real_staff":
-            s = np.squeeze(d_test.data["s"][:, 1].detach().numpy())
-            pi_hat = np.squeeze(model["model"].predict(d_test).detach().numpy())
-            test = spearmanr(a=s, b=pi_hat)
-            test = test.correlation
-            result = np.abs(test)
+        elif data_type == "real_staff" or data_type == "job_corps": # Added job_corps
+            # Assuming s is the sensitive attribute for fairness, and you want a specific column if it's one-hot encoded.
+            # Example: using the second column of s if it represents 'female' after one-hot encoding.
+            # Adjust s_column_index as needed. If s is already 1D, just use d_test.data["s"]
+            s_column_index = 1 # Example: if 'female' is the second column in your sensitive attributes
+            if d_test.data["s"].ndim > 1 and d_test.data["s"].shape[1] > s_column_index:
+                s_tensor = d_test.data["s"][:, s_column_index]
+            else: # if s is already 1D or has only one column
+                s_tensor = d_test.data["s"]
+            
+            s_np = np.squeeze(s_tensor.cpu().numpy())
+
+            if model["name"] == "ols":
+                X_test_tensor = d_test.data["x"]
+                X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy())
+                pi_hat_series = model["model"].predict(X_test_df)
+                pi_hat = np.squeeze(pi_hat_series.values) # .values to get NumPy array from Series
+            else: # For fpnet models
+                pi_hat_tensor = model["model"].predict(d_test) # d_test is Static_Dataset
+                pi_hat = np.squeeze(pi_hat_tensor.cpu().detach().numpy())
+            
+            # Ensure s_np and pi_hat are 1D arrays of the same length
+            if s_np.ndim > 1: s_np = s_np.ravel()
+            if pi_hat.ndim > 1: pi_hat = pi_hat.ravel()
+
+            if len(s_np) == len(pi_hat) and len(s_np) > 1:
+                correlation, p_value = spearmanr(a=s_np, b=pi_hat)
+                result = np.abs(correlation)
+            else:
+                print(f"⚠️ Spearmanr warning for {model['name']}: s_np (len {len(s_np)}) and pi_hat (len {len(pi_hat)}) have incompatible shapes or too few elements.")
+                result = np.nan # Or 0, or handle as error
         df_results.loc[:, model["name"]] = result
     return df_results
 

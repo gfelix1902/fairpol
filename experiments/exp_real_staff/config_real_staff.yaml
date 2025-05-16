@@ -15,9 +15,9 @@ data:
 
 # Configuration for experiment
 experiment:
-  runs: 5
+  runs: 10
   seed: 12345
-  plotting: False
+  plotting: True
   neptune: True
   validation: True
   hyper_path: "/hyperparam/exp_real_staff" # Passen Sie den Hyperparameter-Pfad an
@@ -26,19 +26,19 @@ experiment:
   save_results: True
   m: "dr"
   models:
+    - name: "fpnet"
+      action_fair: "auf"
+      value_fair: "vuf"
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vuf"
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vmm"
+    - name: "fpnet"
+      action_fair: "af_conf"
+      value_fair: "vef"
+    - name: "fpnet"
+      action_fair: "auf"
+      value_fair: "vef"
     - name: "ols"
-    # - name: "fpnet"
-    #   action_fair: "auf"
-    #   value_fair: "vuf"
-    # - name: "fpnet"
-    #   action_fair: "af_conf"
-    #   value_fair: "vuf"
-    # - name: "fpnet"
-    #   action_fair: "af_conf"
-    #   value_fair: "vmm"
-    # - name: "fpnet"
-    #   action_fair: "af_conf"
-    #   value_fair: "vef"
-    # - name: "fpnet"
-    #   action_fair: "auf"
-    #   value_fair: "vef"

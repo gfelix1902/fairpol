@@ -60,7 +60,7 @@ if __name__ == "__main__":
     print_df("Predictions SD", pred_sds)
 
     # Plot OLS predictions if present
-    if "ols" in pred_means.columns:
+    if "ols" in pred_means.columns and False:
         import matplotlib.pyplot as plt
 
         # True values from test set

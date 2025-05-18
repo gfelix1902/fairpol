@@ -532,4 +532,18 @@ class FPNet(PolicyNet):
             pi_values[i] = pi_values[i].detach().numpy()
         return pi_values
 
+    def predict_ite(self, data):
+        """
+        Gibt für jeden Datenpunkt die geschätzte ITE (mu1 - mu0) zurück.
+        """
+        self.eval()
+        if self.tarnet is not None:
+            nuisance = self.tarnet.predict_nuisance(data.data)
+            mu1 = nuisance["mu1"].detach().cpu().numpy()
+            mu0 = nuisance["mu0"].detach().cpu().numpy()
+            ite = mu1 - mu0
+            return ite
+        else:
+            raise ValueError("Kein TARNet-Modell für ITE-Schätzung vorhanden.")
+
 

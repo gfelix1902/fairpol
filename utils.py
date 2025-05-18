@@ -15,31 +15,51 @@ from data.sim_binary_s2 import generate_datasets
 from data.load_real import load_oregon
 from data.load_real_job import main as load_data_from_csv
 
+# TPU-Erkennung: torch_xla nur importieren, wenn vorhanden
+try:
+    import torch_xla.core.xla_model as xm
+    _HAS_XLA = True
+except ImportError:
+    xm = None
+    _HAS_XLA = False
+
 def get_device():
+    if _HAS_XLA:
+        try:
+            if xm.xla_device_hw() == 'TPU':
+                return 'tpu'
+        except Exception:
+            pass
     if torch.cuda.is_available():
-        gpu = 1
-    else:
-        gpu = 0
-    return gpu
+        return 'cuda'
+    return 'cpu'
 
 def get_device_string():
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    return device
+    device = get_device()
+    if device == 'tpu' and _HAS_XLA:
+        return xm.xla_device()
+    elif device == 'cuda':
+        return torch.device("cuda:0")
+    else:
+        return torch.device("cpu")
 
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    if _HAS_XLA:
+        try:
+            xm.set_rng_state(seed)
+        except Exception:
+            pass
 
 def get_project_path():
     path = Path(os.path.dirname(os.path.realpath(__file__)))
     return str(path.absolute())
 
 def load_yaml(path_relative):
-    # print(f"Lade YAML-Konfigurationsdatei: {path_relative}.yaml")
     try:
         config = yaml.safe_load(open(get_project_path() + path_relative + ".yaml", 'r'))
-        # print("YAML-Konfigurationsdatei erfolgreich geladen.")
         return config
     except FileNotFoundError:
         print(f"Fehler: YAML-Konfigurationsdatei {path_relative}.yaml nicht gefunden.")
@@ -53,7 +73,6 @@ def save_yaml(path_relative, file):
         yaml.dump(file, outfile, default_flow_style=False)
 
 def load_data(config_data, standardize=True, seed=None):
-    # print(f"Lade Datensatz: {config_data['dataset']}")
     if config_data["dataset"] == "sim":
         datasets = generate_datasets(config_data)
         print("Simulierter Datensatz erfolgreich geladen.")
@@ -65,7 +84,6 @@ def load_data(config_data, standardize=True, seed=None):
     elif config_data["dataset"] == "real_staff" or config_data["dataset"] == "job_corps":
         datasets = load_data_from_csv(config_data, seed=seed)
         if datasets:
-            # print(f"{config_data['dataset']} Datensatz erfolgreich geladen.")
             return datasets
         else:
             print(f"Fehler beim Laden des {config_data['dataset']} Datensatzes.")
@@ -128,14 +146,23 @@ def train_model(model, datasets, config):
     validation = config["experiment"]["validation"]
     logger = get_logger(config["experiment"]["neptune"])
 
-    # trainer = pl.Trainer(max_epochs=epochs, enable_progress_bar=False, enable_model_summary=False,
-    #                      devices=1 if get_device() else 0, accelerator="gpu" if get_device() else "cpu", logger=logger, enable_checkpointing=False)
+    device = get_device()
+    if device == 'tpu':
+        accelerator = "tpu"
+        devices = 1
+    elif device == 'cuda':
+        accelerator = "gpu"
+        devices = 1
+    else:
+        accelerator = "cpu"
+        devices = 1
 
     trainer = pl.Trainer(
         max_epochs=epochs,
         enable_progress_bar=False,
         enable_model_summary=False,
-        accelerator="gpu" if get_device() else "cpu",
+        accelerator=accelerator,
+        devices=devices,
         logger=logger,
         enable_checkpointing=False
     )
@@ -150,7 +177,7 @@ def train_model(model, datasets, config):
             trainer.fit(model, train_loader)
             val_results = None
         print("Modelltraining abgeschlossen.")
-        return {"trained_model": model, "val_results": val_results[0], "logger": logger}
+        return {"trained_model": model, "val_results": val_results[0] if val_results else None, "logger": logger}
     except Exception as e:
         print(f"Fehler beim Modelltraining: {e}")
         return None

@@ -142,7 +142,7 @@ def mse_bce(y, y_hat, y_type="continuous"):
 def train_model(model, datasets, config):
     print("Starte Modelltraining...")
     epochs = config["model"]["epochs"]
-    batch_size = config["model"]["batch_size"]
+    batch_size = config["model"].get("batch_size", 128)  # z.B. 128 statt 32
     validation = config["experiment"]["validation"]
     logger = get_logger(config["experiment"]["neptune"])
 
@@ -167,7 +167,7 @@ def train_model(model, datasets, config):
         enable_checkpointing=False
     )
 
-    train_loader = DataLoader(dataset=datasets["d_train"], batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(dataset=datasets["d_train"], batch_size=batch_size, shuffle=True, num_workers=2)
     try:
         if validation:
             val_loader = DataLoader(dataset=datasets["d_val"], batch_size=batch_size, shuffle=False)

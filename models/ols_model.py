@@ -109,3 +109,12 @@ class OLSModel:
             return importance
         else:
             raise ValueError("Model does not have coefficients.")
+
+    def predict_ite(self, X: pd.DataFrame, treat_col: str = "assignment") -> np.ndarray:
+        X1 = X.copy()
+        X1[treat_col] = 1
+        X0 = X.copy()
+        X0[treat_col] = 0
+        y1_pred = self.predict(X1)
+        y0_pred = self.predict(X0)
+        return (y1_pred - y0_pred).values

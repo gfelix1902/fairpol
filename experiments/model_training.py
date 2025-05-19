@@ -133,6 +133,7 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
             # Features + Treatment
             X_train_tensor = datasets["d_train"].data["x"]
             a_train = datasets["d_train"].data["a"].cpu().numpy().ravel()
+            a_train = datasets["d_train"].data["a"].cpu().numpy().ravel()
             y_train_tensor = datasets["d_train"].data["y"]
             X_train_df = pd.DataFrame(X_train_tensor.cpu().numpy())
             X_train_df["assignment"] = a_train

@@ -12,7 +12,7 @@ import logging
 class OLSModel:
     def __init__(self, standardize: bool = False, feature_selection: bool = False, threshold: float = 0.01, cv: int = None, regularization: str = None, alpha: float = 1.0, impute: bool = False):
         if regularization == "ridge":
-            self.model = Ridge(alpha=alpha)
+            self.model = Ridge(alpha=alpha, n_jobs=-1)
         elif regularization == "lasso":
             self.model = Lasso(alpha=alpha)
         else:
@@ -41,6 +41,7 @@ class OLSModel:
             scores = cross_val_score(self.model, X_processed, y, cv=self.cv, scoring="neg_mean_squared_error")
             print(f"Cross-Validation MSE: {-scores.mean():.4f} ± {scores.std():.4f}")
         self.model.fit(X_processed, y)
+        self.feature_order = X.columns.tolist() if isinstance(X, pd.DataFrame) else None
         self.logger.info("Training completed.")
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
@@ -115,6 +116,10 @@ class OLSModel:
         X1[treat_col] = 1
         X0 = X.copy()
         X0[treat_col] = 0
+        # Stelle sicher, dass die Reihenfolge der Spalten wie beim Training ist!
+        if hasattr(self, "feature_order") and self.feature_order is not None:
+            X1 = X1[self.feature_order]
+            X0 = X0[self.feature_order]
         y1_pred = self.predict(X1)
         y0_pred = self.predict(X0)
         return (y1_pred - y0_pred).values

@@ -42,12 +42,13 @@ if __name__ == "__main__":
             if isinstance(model, dict) and "trained_model" in model:
                 model = model["trained_model"]
 
-            # OLSModel benötigt ein DataFrame als Input für predict_ite
             if model_name == "ols":
-                # Extrahiere das DataFrame aus deinem Static_Dataset
                 X_test = pd.DataFrame(datasets["d_test"].data["x"].cpu().numpy())
-                # Füge die Treatment-Spalte hinzu
                 X_test["assignment"] = datasets["d_test"].data["a"].cpu().numpy().ravel()
+                X_test.columns = X_test.columns.astype(str)
+                # Spaltenreihenfolge wie beim Training!
+                if hasattr(model, "feature_order") and model.feature_order is not None:
+                    X_test = X_test[model.feature_order]
                 ite = model.predict_ite(X_test, treat_col="assignment")
             else:
                 if not hasattr(model, "predict_ite"):

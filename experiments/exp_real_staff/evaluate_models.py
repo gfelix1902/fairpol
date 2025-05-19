@@ -48,6 +48,8 @@ if __name__ == "__main__":
                 X_test = pd.DataFrame(datasets["d_test"].data["x"].cpu().numpy())
                 # Füge die Treatment-Spalte hinzu
                 X_test["assignment"] = datasets["d_test"].data["a"].cpu().numpy().ravel()
+                # Setze alle Spaltennamen auf String
+                X_test.columns = X_test.columns.astype(str)
                 ite = model.predict_ite(X_test, treat_col="assignment")
             else:
                 if not hasattr(model, "predict_ite"):

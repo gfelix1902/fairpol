@@ -36,11 +36,12 @@ class OLSModel:
         if self.feature_selection and self.selector is not None:
             X_processed = self.selector.fit_transform(X_processed)
         if self.standardize and self.scaler is not None:
-            X_processed = self.scaler.fit_transform(X_processed)
+            X_processed = self.scaler.fit_transform(X_processed)  # <--- Hier wird der Scaler angepasst
         if self.cv:
             scores = cross_val_score(self.model, X_processed, y, cv=self.cv, scoring="neg_mean_squared_error")
             print(f"Cross-Validation MSE: {-scores.mean():.4f} ± {scores.std():.4f}")
         self.model.fit(X_processed, y)
+        self.feature_names_in_ = X.columns.tolist()  # <--- Hier werden die Spaltennamen gespeichert
         self.logger.info("Training completed.")
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
@@ -52,7 +53,7 @@ class OLSModel:
         if self.feature_selection and self.selector is not None:
             X_processed = self.selector.transform(X_processed)
         if self.standardize and self.scaler is not None:
-            X_processed = self.scaler.transform(X_processed)
+            X_processed = self.scaler.transform(X_processed)  # <--- Hier wird der Scaler angewendet
         return pd.Series(self.model.predict(X_processed), index=X.index)
 
     def evaluate(self, X: pd.DataFrame, y: pd.Series) -> dict:

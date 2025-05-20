@@ -27,13 +27,22 @@ def get_policy_predictions(trained_models, d_test, data_type="real"):
         model_instance = model["model"]
 
         if model_name == "ols":
-            # Vorhersagen mit OLS
             X_test_tensor = d_test.data["x"]
             X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy())
-            df_results[model_name] = model_instance.predict(X_test_df)
+            X_test_df["assignment"] = d_test.data["a"].cpu().numpy().ravel()
+            X_test_df.columns = [str(col) for col in X_test_df.columns]
 
+            train_columns = getattr(model_instance, "feature_names_in_", None)
+            if train_columns is not None:
+                train_columns = list(train_columns)
+                for col in train_columns:
+                    if col not in X_test_df.columns:
+                        X_test_df[col] = 0
+                X_test_df = X_test_df[train_columns]
+            else:
+                print("⚠️ Konnte Trainingsspalten nicht abrufen (feature_names_in_ fehlt im Modell).")
+            df_results[model_name] = model_instance.predict(X_test_df)
         elif "fpnet" in model_name:
-            # Vorhersagen mit neuronalen Netzen
             df_results[model_name] = model_instance.predict(d_test).detach().numpy()
 
         else:
@@ -61,18 +70,15 @@ def get_table_pvalues(trained_models, d_test, data_type="sim"):
     return df_results
 
 def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
-    # print(f"➡️ data_type: {data_type}")  # Debug-Output für den data_type
 
     models_names = get_models_names(trained_models)
     df_results = None
 
     if data_type == "sim":
-        #print(" Verwende 'sim' Daten...")
         df_results = create_table(models_names, len(d_test))
         for model in models_names:
             try:
                 result = model["model"].evaluate_policy_perturbed(d_test)
-                #print(f"✅ Ergebnis für {model['name']}: {result}")
 
                 if result is not None:
                     result_length = len(result)
@@ -89,12 +95,10 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
                 print(f"❌ Fehler beim Bewerten von {model['name']}: {e}")
 
     elif data_type == "real":
-        # print(" Verwende 'real' Daten...")
         df_results = create_table(models_names, 2)
         for model in models_names:
             try:
                 result = model["model"].evaluate_conditional_pvalues(d_test, oracle=False)
-                # print(f"✅ Ergebnis für {model['name']}: {result}")
 
                 if result is not None:
                     result_length = len(result)
@@ -107,34 +111,40 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
             except Exception as e:
                 print(f"❌ Fehler beim Bewerten von {model['name']}: {e}")
 
-    elif data_type == "real_staff" or data_type == "job_corps": # Added job_corps
-        # print(" Verwende 'real_staff' Daten...")
+    elif data_type == "real_staff" or data_type == "job_corps":
         max_length = 0
         results_dict = {}
 
-        for model_info in models_names: # Renamed model to model_info to avoid conflict
+        for model_info in models_names:
             model_instance = model_info["model"]
             model_name_str = model_info["name"]
             try:
                 if model_name_str == "ols":
                     X_test_tensor = d_test.data["x"]
                     y_test_tensor = d_test.data["y"]
-                    s_test_tensor = d_test.data["s"] # Assuming s_test is needed
+                    s_test_tensor = d_test.data["s"]
 
                     X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy())
+                    X_test_df["assignment"] = d_test.data["a"].cpu().numpy().ravel()
+                    X_test_df.columns = [str(col) for col in X_test_df.columns]
+
+                    train_columns = getattr(model_instance, "feature_names_in_", None)
+                    if train_columns is not None:
+                        train_columns = list(train_columns)
+                        for col in train_columns:
+                            if col not in X_test_df.columns:
+                                X_test_df[col] = 0
+                        X_test_df = X_test_df[train_columns]
+                    else:
+                        print("⚠️ Konnte Trainingsspalten nicht abrufen (feature_names_in_ fehlt im Modell).")
+
                     y_test_series = pd.Series(y_test_tensor.cpu().numpy().ravel())
-                    # For s_test, if it's multi-column (e.g. one-hot), decide how to pass it.
-                    # The dummy OLSModel.evaluate_conditional_pvalues doesn't use s_test yet.
-                    # If s_test is single column sensitive attribute:
                     s_test_series = pd.Series(s_test_tensor.cpu().numpy().ravel())
-                    # If s_test is multi-column and you need a specific one:
-                    # s_test_series = pd.Series(s_test_tensor[:, relevant_s_column_index].cpu().numpy().ravel())
 
                     result = model_instance.evaluate_conditional_pvalues(X_test_df, y_test_series, s_test_series)
                 else: # For fpnet and other models expecting Static_Dataset
                     result = model_instance.evaluate_conditional_pvalues(d_test, oracle=False)
                 
-                # ... rest of the logic for handling result ...
                 if result is not None:
                     result_length = len(result)
                     results_dict[model_name_str] = result

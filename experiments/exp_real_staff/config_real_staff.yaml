@@ -8,8 +8,8 @@ data:
   outcome_col: "earny4"
   treat_col: "assignment"
   sensitive_col: ["female", "white", "black", "hispanic"]
-  covariate_cols: ["age", "educ", "english", "cohabmarried", "haschild", "everwkd", "mwearn", "hhsize", "educmum", "educdad", "welfarechild", "health", "smoke", "alcohol"]
-  categorical_cols: ["english", "cohabmarried", "haschild", "everwkd"]
+  covariate_cols: ["age", "educ", "english", "cohabmarried", "haschild", "everwkd", "mwearn", "hhsize", "educmum", "educdad", "welfarechild", "health", "smoke", "alcohol", "trainy1", "trainy2"]
+  categorical_cols: ["english", "cohabmarried", "haschild", "everwkd", "trainy1", "trainy2"]
   continuous_cols: ["age", "educ", "mwearn", "hhsize", "educmum", "educdad"]
   ordinal_cols: ["welfarechild", "health", "smoke", "alcohol"]
 

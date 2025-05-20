@@ -46,6 +46,7 @@ if __name__ == "__main__":
             # OLS-Modell: DataFrame für predict_ite und predict_cate vorbereiten
             if model_name == "ols":
                 X_test = pd.DataFrame(datasets["d_test"].data["x"].cpu().numpy())
+                X_test = X_test.apply(pd.to_numeric, errors='coerce')
                 X_test["assignment"] = datasets["d_test"].data["a"].cpu().numpy().ravel()
                 X_test.columns = X_test.columns.astype(str)
                 if hasattr(model, "feature_order") and model.feature_order is not None:

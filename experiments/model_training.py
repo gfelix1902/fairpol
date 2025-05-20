@@ -129,16 +129,19 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
 
         if model_config["name"] == "ols":
             model_name = "ols"
-            ols_model = OLSModel(standardize=True, regularization="ridge")
-            # Features + Treatment
+            ols_model = OLSModel(standardize=True)
+
+            # Extrahiere Features und Zielvariable
             X_train_tensor = datasets["d_train"].data["x"]
             a_train = datasets["d_train"].data["a"].cpu().numpy().ravel()
             a_train = datasets["d_train"].data["a"].cpu().numpy().ravel()
             y_train_tensor = datasets["d_train"].data["y"]
             X_train_df = pd.DataFrame(X_train_tensor.cpu().numpy())
             X_train_df["assignment"] = a_train
-            X_train_df.columns = X_train_df.columns.astype(str)
+            X_train_df.columns = X_train_df.columns.astype(str)  # <--- Wichtig: Spaltennamen als Strings
             y_train_series = pd.Series(y_train_tensor.cpu().numpy().ravel())
+
+            # Trainiere das OLS-Modell
             ols_model.train(X_train_df, y_train_series)
             trained_models[model_name] = {"trained_model": ols_model}
 

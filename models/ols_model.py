@@ -36,12 +36,12 @@ class OLSModel:
         if self.feature_selection and self.selector is not None:
             X_processed = self.selector.fit_transform(X_processed)
         if self.standardize and self.scaler is not None:
-            X_processed = self.scaler.fit_transform(X_processed)
+            X_processed = self.scaler.fit_transform(X_processed)  # <--- Hier wird der Scaler angepasst
         if self.cv:
             scores = cross_val_score(self.model, X_processed, y, cv=self.cv, scoring="neg_mean_squared_error")
             print(f"Cross-Validation MSE: {-scores.mean():.4f} ± {scores.std():.4f}")
         self.model.fit(X_processed, y)
-        self.feature_order = X.columns.tolist() if isinstance(X, pd.DataFrame) else None
+        self.feature_names_in_ = X.columns.tolist()  # <--- Hier werden die Spaltennamen gespeichert
         self.logger.info("Training completed.")
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
@@ -53,7 +53,7 @@ class OLSModel:
         if self.feature_selection and self.selector is not None:
             X_processed = self.selector.transform(X_processed)
         if self.standardize and self.scaler is not None:
-            X_processed = self.scaler.transform(X_processed)
+            X_processed = self.scaler.transform(X_processed)  # <--- Hier wird der Scaler angewendet
         return pd.Series(self.model.predict(X_processed), index=X.index)
 
     def evaluate(self, X: pd.DataFrame, y: pd.Series) -> dict:
@@ -123,3 +123,27 @@ class OLSModel:
         y1_pred = self.predict(X1)
         y0_pred = self.predict(X0)
         return (y1_pred - y0_pred).values
+    
+    def predict_cate(self, X: pd.DataFrame, treat_cols: list, treat_values: list, base_values: list = None) -> np.ndarray:
+        """
+        Schätzt den CATE für eine bestimmte Treatment-Kombination.
+        treat_cols: Liste der Treatment-Spalten, z.B. ["trainy1", "trainy2"]
+        treat_values: Werte für Treatment (z.B. [1, 1] für beide Trainingsjahre)
+        base_values: Werte für Baseline (z.B. [0, 0] für kein Training)
+        Gibt den Unterschied in der Outcome-Vorhersage zwischen treat_values und base_values zurück.
+        """
+        X_treat = X.copy()
+        X_base = X.copy()
+        for col, val in zip(treat_cols, treat_values):
+            X_treat[col] = val
+        if base_values is None:
+            base_values = [0] * len(treat_cols)
+        for col, val in zip(treat_cols, base_values):
+            X_base[col] = val
+        # Reihenfolge der Spalten wie beim Training sicherstellen
+        if hasattr(self, "feature_order") and self.feature_order is not None:
+            X_treat = X_treat[self.feature_order]
+            X_base = X_base[self.feature_order]
+        y_treat = self.predict(X_treat)
+        y_base = self.predict(X_base)
+        return (y_treat - y_base).values

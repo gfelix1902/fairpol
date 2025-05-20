@@ -142,7 +142,7 @@ def mse_bce(y, y_hat, y_type="continuous"):
 def train_model(model, datasets, config):
     print("Starte Modelltraining...")
     epochs = config["model"]["epochs"]
-    batch_size = config["model"].get("batch_size", 128)  # z.B. 128 statt 32
+    batch_size = config["model"]["batch_size"]
     validation = config["experiment"]["validation"]
     logger = get_logger(config["experiment"]["neptune"])
 

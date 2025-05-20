@@ -533,9 +533,6 @@ class FPNet(PolicyNet):
         return pi_values
 
     def predict_ite(self, data):
-        """
-        Gibt für jeden Datenpunkt die geschätzte ITE (mu1 - mu0) zurück.
-        """
         self.eval()
         if self.tarnet is not None:
             nuisance = self.tarnet.predict_nuisance(data.data)
@@ -545,5 +542,33 @@ class FPNet(PolicyNet):
             return ite
         else:
             raise ValueError("Kein TARNet-Modell für ITE-Schätzung vorhanden.")
-
-
+    
+    def predict_cate(self, data, treat_cols, treat_values, base_values=None):
+        """
+        Schätzt den CATE für eine bestimmte Treatment-Kombination.
+        treat_cols: Liste der Treatment-Spalten, z.B. ["trainy1", "trainy2"]
+        treat_values: Werte für Treatment (z.B. [1, 1] für beide Trainingsjahre)
+        base_values: Werte für Baseline (z.B. [0, 0] für kein Training)
+        Gibt den Unterschied in der Outcome-Vorhersage zwischen treat_values und base_values zurück.
+        """
+        import copy
+        # Kopien der Daten erzeugen
+        data_treat = copy.deepcopy(data)
+        data_base = copy.deepcopy(data)
+        # Setze die Treatments auf die gewünschten Werte
+        for col, val in zip(treat_cols, treat_values):
+            idx = data_treat.data["x"].columns.get_loc(col) if hasattr(data_treat.data["x"], "columns") else col
+            data_treat.data["x"][:, idx] = val
+        if base_values is None:
+            base_values = [0] * len(treat_cols)
+        for col, val in zip(treat_cols, base_values):
+            idx = data_base.data["x"].columns.get_loc(col) if hasattr(data_base.data["x"], "columns") else col
+            data_base.data["x"][:, idx] = val
+        # Potenzialwerte berechnen
+        self.eval()
+        nuisance_treat = self.tarnet.predict_nuisance(data_treat.data)
+        nuisance_base = self.tarnet.predict_nuisance(data_base.data)
+        mu_treat = nuisance_treat["mu1"].detach().cpu().numpy()
+        mu_base = nuisance_base["mu0"].detach().cpu().numpy()
+        cate = mu_treat - mu_base
+        return cate

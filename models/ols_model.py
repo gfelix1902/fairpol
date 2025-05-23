@@ -37,20 +37,35 @@ class OLSModel:
         if "trainy1" in X_processed.columns and "trainy2" in X_processed.columns:
             X_processed["trainy1_x_trainy2"] = X_processed["trainy1"] * X_processed["trainy2"]
                 
-        # Speichere die Feature-Namen für spätere Verwendung
         self.feature_names_in_ = X_processed.columns.tolist()
         
         if self.impute and self.imputer is not None:
-            X_processed = self.imputer.fit_transform(X_processed)
+            X_processed_transformed = self.imputer.fit_transform(X_processed)
+            if isinstance(X_processed_transformed, np.ndarray):
+                 X_processed = pd.DataFrame(X_processed_transformed, columns=self.feature_names_in_ if len(self.feature_names_in_) == X_processed_transformed.shape[1] else [f"feature_{i}" for i in range(X_processed_transformed.shape[1])])
+            else:
+                 X_processed = X_processed_transformed
+            self.feature_names_in_ = X_processed.columns.tolist() # Update feature names if columns changed
+
         if self.feature_selection and self.selector is not None:
-            X_processed = self.selector.fit_transform(X_processed)
+            selected_features_mask = self.selector.fit(X_processed).get_support()
+            X_processed = X_processed.loc[:, selected_features_mask]
+            self.feature_names_in_ = X_processed.columns.tolist() # Update feature names after selection
+
         if self.standardize and self.scaler is not None:
-            X_processed = self.scaler.fit_transform(X_processed)  # <--- Hier wird der Scaler angepasst
+            X_processed_scaled = self.scaler.fit_transform(X_processed)
+            if isinstance(X_processed_scaled, np.ndarray):
+                X_processed = pd.DataFrame(X_processed_scaled, columns=self.feature_names_in_)
+            else:
+                X_processed = X_processed_scaled
+
         if self.cv:
             scores = cross_val_score(self.model, X_processed, y, cv=self.cv, scoring="neg_mean_squared_error")
             print(f"Cross-Validation MSE: {-scores.mean():.4f} ± {scores.std():.4f}")
-        self.model.fit(X_processed, y)
-        self.feature_names_in_ = X.columns.tolist()  # <--- Hier werden die Spaltennamen gespeichert
+        
+        self.model.fit(X_processed, y) # self.model (scikit-learn) wird hier trainiert.
+                                       # Wenn X_processed ein DataFrame ist, speichert self.model intern dessen Spaltennamen.
+
         self.logger.info("Training completed.")
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
@@ -125,10 +140,6 @@ class OLSModel:
         X1[treat_col] = 1
         X0 = X.copy()
         X0[treat_col] = 0
-        # Stelle sicher, dass die Reihenfolge der Spalten wie beim Training ist!
-        if hasattr(self, "feature_order") and self.feature_order is not None:
-            X1 = X1[self.feature_order]
-            X0 = X0[self.feature_order]
         y1_pred = self.predict(X1)
         y0_pred = self.predict(X0)
         return (y1_pred - y0_pred).values
@@ -152,11 +163,6 @@ class OLSModel:
             X_treat["trainy1_x_trainy2"] = X_treat["trainy1"] * X_treat["trainy2"]
             X_base["trainy1_x_trainy2"] = X_base["trainy1"] * X_base["trainy2"]
     
-        # Weitere Verarbeitung wie bisher...
-        if hasattr(self, "feature_order") and self.feature_order is not None:
-            X_treat = X_treat[self.feature_order]
-            X_base = X_base[self.feature_order]
-        
         y_treat = self.predict(X_treat)
         y_base = self.predict(X_base)
         

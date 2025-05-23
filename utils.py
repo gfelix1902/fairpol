@@ -19,6 +19,7 @@ from data.load_real_job import main as load_data_from_csv
 try:
     import torch_xla.core.xla_model as xm
     _HAS_XLA = True
+    os.environ["XLA_USE_BF16"] = "1"
 except ImportError:
     xm = None
     _HAS_XLA = False
@@ -149,7 +150,7 @@ def train_model(model, datasets, config):
     device = get_device()
     if device == 'tpu':
         accelerator = "tpu"
-        devices = 1
+        devices = 8  # Für eine v2-8 TPU mit 8 Kernen
     elif device == 'cuda':
         accelerator = "gpu"
         devices = 1

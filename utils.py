@@ -27,9 +27,11 @@ except ImportError:
 def get_device():
     if _HAS_XLA:
         try:
-            if xm.xla_device_hw() == 'TPU':
+            device_obj = xm.xla_device() 
+            hw_type = xm.xla_device_hw(device_obj) 
+            if hw_type == 'TPU':
                 return 'tpu'
-        except Exception:
+        except Exception as e:
             pass
     if torch.cuda.is_available():
         return 'cuda'

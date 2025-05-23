@@ -134,11 +134,16 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
             # Extrahiere Features und Zielvariable
             X_train_tensor = datasets["d_train"].data["x"]
             a_train = datasets["d_train"].data["a"].cpu().numpy().ravel()
-            a_train = datasets["d_train"].data["a"].cpu().numpy().ravel()
             y_train_tensor = datasets["d_train"].data["y"]
-            X_train_df = pd.DataFrame(X_train_tensor.cpu().numpy())
+
+            # Hole die echten Feature-Namen aus der Config!
+            feature_names = config_exp["data"]["covariate_cols"] + ["assignment"]
+
+            # Erstelle DataFrame mit echten Namen
+            X_train_df = pd.DataFrame(X_train_tensor.cpu().numpy(), columns=config_exp["data"]["covariate_cols"])
             X_train_df["assignment"] = a_train
-            X_train_df.columns = X_train_df.columns.astype(str)  # <--- Wichtig: Spaltennamen als Strings
+            X_train_df = X_train_df[feature_names]  # richtige Reihenfolge
+
             y_train_series = pd.Series(y_train_tensor.cpu().numpy().ravel())
 
             # Trainiere das OLS-Modell

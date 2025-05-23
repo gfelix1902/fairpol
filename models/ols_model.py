@@ -140,23 +140,23 @@ class OLSModel:
         # Setze Treatment-Werte
         for col, val in zip(treat_cols, treat_values):
             X_treat[col] = val
-            
+    
         if base_values is None:
             base_values = [0] * len(treat_cols)
-            
+    
         for col, val in zip(treat_cols, base_values):
             X_base[col] = val
-            
-        # Interaktionsterme hinzufügen
-        if "trainy1" in X_treat.columns and "trainy2" in X_treat.columns:
+    
+        # Interaktionsterme IMMER neu berechnen, wenn sie existieren oder benötigt werden
+        if "trainy1" in treat_cols and "trainy2" in treat_cols:
             X_treat["trainy1_x_trainy2"] = X_treat["trainy1"] * X_treat["trainy2"]
             X_base["trainy1_x_trainy2"] = X_base["trainy1"] * X_base["trainy2"]
-        
+    
         # Weitere Verarbeitung wie bisher...
         if hasattr(self, "feature_order") and self.feature_order is not None:
             X_treat = X_treat[self.feature_order]
             X_base = X_base[self.feature_order]
-            
+        
         y_treat = self.predict(X_treat)
         y_base = self.predict(X_base)
         

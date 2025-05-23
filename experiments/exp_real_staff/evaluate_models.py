@@ -75,8 +75,26 @@ if __name__ == "__main__":
                 )
                 # Füge assignment als neue Spalte hinzu
                 X_test["assignment"] = datasets["d_test"].data["a"].cpu().numpy().ravel()
+                
+                # WICHTIG: Interaktionsterm hinzufügen, wenn er im Training verwendet wurde!
+                if "trainy1" in X_test.columns and "trainy2" in X_test.columns:
+                    X_test["trainy1_x_trainy2"] = X_test["trainy1"] * X_test["trainy2"]
+                
+                # Prüfe, ob alle Trainings-Features vorhanden sind
+                if hasattr(model, "feature_names_in_") and model.feature_names_in_ is not None:
+                    for feature in model.feature_names_in_:
+                        if feature not in X_test.columns:
+                            print(f"⚠️ Warnung: Feature '{feature}' fehlt im Test-DataFrame! Wird mit Nullen ergänzt.")
+                            X_test[feature] = 0
+                
                 # Sortiere die Spalten in die richtige Reihenfolge
-                X_test = X_test[feature_names]  # richtige Reihenfolge
+                if hasattr(model, "feature_names_in_") and model.feature_names_in_ is not None:
+                    # Verwende exakt die gleichen Features wie beim Training
+                    X_test = X_test[model.feature_names_in_]
+                else:
+                    # Fallback zur Standard-Reihenfolge
+                    X_test = X_test[feature_names]
+                    
                 ite = model.predict_ite(X_test, treat_col="assignment")
                 cate_both = model.predict_cate(X_test, treat_cols=["trainy1", "trainy2"], treat_values=[1, 1], base_values=[0, 0])
                 cate_first = model.predict_cate(X_test, treat_cols=["trainy1", "trainy2"], treat_values=[1, 0], base_values=[0, 0])

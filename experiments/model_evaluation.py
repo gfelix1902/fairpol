@@ -28,10 +28,21 @@ def get_policy_predictions(trained_models, d_test, data_type="real"):
 
         if model_name == "ols":
             X_test_tensor = d_test.data["x"]
-            X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy())
+            
+            # Hier die Spaltennamen korrekt setzen!
+            feature_names = getattr(model_instance, "feature_names_in_", None)
+            if feature_names is None:
+                # Fallback, falls feature_names_in_ nicht vorhanden
+                feature_names = [str(i) for i in range(X_test_tensor.shape[1])]
+            
+            X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy(), columns=feature_names[:-1] if "assignment" in feature_names else feature_names)
             X_test_df["assignment"] = d_test.data["a"].cpu().numpy().ravel()
-            X_test_df.columns = [str(col) for col in X_test_df.columns]
+            
+            # WICHTIG: Interaktionsterm hier hinzufügen!
+            if "trainy1" in X_test_df.columns and "trainy2" in X_test_df.columns:
+                X_test_df["trainy1_x_trainy2"] = X_test_df["trainy1"] * X_test_df["trainy2"]
 
+            # Prüfe, ob alle benötigten Features vorhanden sind
             train_columns = getattr(model_instance, "feature_names_in_", None)
             if train_columns is not None:
                 train_columns = list(train_columns)
@@ -41,10 +52,10 @@ def get_policy_predictions(trained_models, d_test, data_type="real"):
                 X_test_df = X_test_df[train_columns]
             else:
                 print("⚠️ Konnte Trainingsspalten nicht abrufen (feature_names_in_ fehlt im Modell).")
+            
             df_results[model_name] = model_instance.predict(X_test_df)
         elif "fpnet" in model_name:
             df_results[model_name] = model_instance.predict(d_test).detach().numpy()
-
         else:
             print(f"⚠️ Unbekanntes Modell: {model_name}")
 
@@ -133,7 +144,24 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim", covar
 
                     X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy(), columns=feature_names[:-1])
                     X_test_df["assignment"] = d_test.data["a"].cpu().numpy().ravel()
-                    X_test_df = X_test_df[feature_names]  # richtige Reihenfolge
+                    
+                    # HINZUFÜGEN: Interaktionsterm erzeugen
+                    if "trainy1" in X_test_df.columns and "trainy2" in X_test_df.columns:
+                        X_test_df["trainy1_x_trainy2"] = X_test_df["trainy1"] * X_test_df["trainy2"]
+                    
+                    # Prüfe, ob alle Trainings-Features vorhanden sind
+                    if hasattr(model_instance, "feature_names_in_") and model_instance.feature_names_in_ is not None:
+                        missing_features = [f for f in model_instance.feature_names_in_ if f not in X_test_df.columns]
+                        if missing_features:
+                            print(f"⚠️ Fehlende Features: {missing_features}")
+                            for feature in missing_features:
+                                X_test_df[feature] = 0
+                    
+                    # Sortiere die Spalten in die richtige Reihenfolge
+                    if hasattr(model_instance, "feature_names_in_") and model_instance.feature_names_in_ is not None:
+                        X_test_df = X_test_df[model_instance.feature_names_in_]
+                    else:
+                        X_test_df = X_test_df[feature_names]
 
                     y_test_series = pd.Series(y_test_tensor.cpu().numpy().ravel())
                     s_test_series = pd.Series(s_test_tensor.cpu().numpy().ravel())
@@ -191,7 +219,7 @@ def get_table_action_fairness(trained_models, d_test, data_type="sim"):
             test = spearmanr(a=s, b=pi_hat)
             test = test.correlation
             result = np.abs(test)
-        elif data_type == "real_staff" or data_type == "job_corps": # Added job_corps
+        elif data_type == "real_staff" or data_type == "job_corps": 
             # Assuming s is the sensitive attribute for fairness, and you want a specific column if it's one-hot encoded.
             # Example: using the second column of s if it represents 'female' after one-hot encoding.
             # Adjust s_column_index as needed. If s is already 1D, just use d_test.data["s"]
@@ -205,9 +233,27 @@ def get_table_action_fairness(trained_models, d_test, data_type="sim"):
 
             if model["name"] == "ols":
                 X_test_tensor = d_test.data["x"]
-                X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy())
+                feature_names = getattr(model["model"], "feature_names_in_", None)
+                if feature_names is None:
+                    feature_names = [str(i) for i in range(X_test_tensor.shape[1])]
+                
+                X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy(), columns=feature_names)
+                
+                # HINZUFÜGEN: Interaktionsterm erzeugen (wenn nötig)
+                if "trainy1" in X_test_df.columns and "trainy2" in X_test_df.columns:
+                    X_test_df["trainy1_x_trainy2"] = X_test_df["trainy1"] * X_test_df["trainy2"]
+                
+                # Prüfe, ob alle Trainings-Features vorhanden sind
+                if hasattr(model["model"], "feature_names_in_") and model["model"].feature_names_in_ is not None:
+                    missing_features = [f for f in model["model"].feature_names_in_ if f not in X_test_df.columns]
+                    if missing_features:
+                        print(f"⚠️ Fehlende Features in action_fairness: {missing_features}")
+                        for feature in missing_features:
+                            X_test_df[feature] = 0
+                    X_test_df = X_test_df[model["model"].feature_names_in_]
+                
                 pi_hat_series = model["model"].predict(X_test_df)
-                pi_hat = np.squeeze(pi_hat_series.values) # .values to get NumPy array from Series
+                pi_hat = np.squeeze(pi_hat_series.values)
             else: # For fpnet models
                 pi_hat_tensor = model["model"].predict(d_test) # d_test is Static_Dataset
                 pi_hat = np.squeeze(pi_hat_tensor.cpu().detach().numpy())

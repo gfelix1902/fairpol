@@ -543,7 +543,7 @@ class FPNet(PolicyNet):
         else:
             raise ValueError("Kein TARNet-Modell für ITE-Schätzung vorhanden.")
     
-    def predict_cate(self, data, treat_cols, treat_values, base_values=None):
+    def predict_cate(self, data, treat_cols, treat_values, base_values=None, feature_names=None):
         """
         Schätzt den CATE für eine bestimmte Treatment-Kombination.
         treat_cols: Liste der Treatment-Spalten, z.B. ["trainy1", "trainy2"]
@@ -552,19 +552,29 @@ class FPNet(PolicyNet):
         Gibt den Unterschied in der Outcome-Vorhersage zwischen treat_values und base_values zurück.
         """
         import copy
-        # Kopien der Daten erzeugen
-        data_treat = copy.deepcopy(data)
-        data_base = copy.deepcopy(data)
-        # Setze die Treatments auf die gewünschten Werte
+        # feature_names: Liste der Spaltennamen in der Reihenfolge wie im Tensor
+        if feature_names is None:
+            raise ValueError("feature_names muss übergeben werden!")
+        x_treat = data.data["x"].clone()
+        x_base = data.data["x"].clone()
+
+        print("feature_names:", feature_names)
+        print("x_treat.shape:", x_treat.shape)
+        for col in treat_cols:
+            print(f"{col}: index in feature_names = {feature_names.index(col)}")
+
         for col, val in zip(treat_cols, treat_values):
-            idx = data_treat.data["x"].columns.get_loc(col) if hasattr(data_treat.data["x"], "columns") else col
-            data_treat.data["x"][:, idx] = val
+            idx = feature_names.index(col)
+            x_treat[:, idx] = val
         if base_values is None:
             base_values = [0] * len(treat_cols)
         for col, val in zip(treat_cols, base_values):
-            idx = data_base.data["x"].columns.get_loc(col) if hasattr(data_base.data["x"], "columns") else col
-            data_base.data["x"][:, idx] = val
-        # Potenzialwerte berechnen
+            idx = feature_names.index(col)
+            x_base[:, idx] = val
+        data_treat = copy.deepcopy(data)
+        data_base = copy.deepcopy(data)
+        data_treat.data["x"] = x_treat
+        data_base.data["x"] = x_base
         self.eval()
         nuisance_treat = self.tarnet.predict_nuisance(data_treat.data)
         nuisance_base = self.tarnet.predict_nuisance(data_base.data)

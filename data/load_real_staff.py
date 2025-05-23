@@ -18,9 +18,9 @@ SENSITIVE_ATTRS = ["female", "white", "black", "hispanic"]
 # Kovariaten ohne sensible Attribute
 COVARIATE_COLS = ["age", "educ", "english", "cohabmarried", "haschild",
                   "everwkd", "mwearn", "hhsize", "educmum", "educdad",
-                  "welfarechild", "health", "smoke", "alcohol"]
+                  "welfarechild", "health", "smoke", "alcohol", "trainy1", "trainy2"]
 
-CATEGORICAL_COLS = ["english", "cohabmarried", "haschild", "everwkd"]
+CATEGORICAL_COLS = ["english", "cohabmarried", "haschild", "everwkd", "trainy1", "trainy2"]
 CONTINUOUS_COLS = ["age", "educ", "mwearn", "hhsize", "educmum", "educdad"]
 ORDINAL_COLS = ["welfarechild", "health", "smoke", "alcohol"]
 

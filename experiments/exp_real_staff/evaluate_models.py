@@ -43,6 +43,15 @@ if __name__ == "__main__":
                 model = model["trained_model"]
 
             results = []
+
+            # Feature-Namen bestimmen (für alle Modelle, nicht nur OLS)
+            if hasattr(model, "feature_order") and model.feature_order is not None:
+                feature_names = model.feature_order
+            elif "covariate_cols" in config_exp["data"]:
+                feature_names = config_exp["data"]["covariate_cols"]
+            else:
+                raise ValueError("Feature-Namen konnten nicht bestimmt werden!")
+
             # OLS-Modell: DataFrame für predict_ite und predict_cate vorbereiten
             if model_name == "ols":
                 X_test = pd.DataFrame(datasets["d_test"].data["x"].cpu().numpy())
@@ -61,9 +70,27 @@ if __name__ == "__main__":
             # Andere Modelle mit ITE/CATE
             elif hasattr(model, "predict_ite") and hasattr(model, "predict_cate"):
                 ite = model.predict_ite(datasets["d_test"])
-                cate_both = model.predict_cate(datasets["d_test"], treat_cols=["trainy1", "trainy2"], treat_values=[1, 1], base_values=[0, 0])
-                cate_first = model.predict_cate(datasets["d_test"], treat_cols=["trainy1", "trainy2"], treat_values=[1, 0], base_values=[0, 0])
-                cate_second = model.predict_cate(datasets["d_test"], treat_cols=["trainy1", "trainy2"], treat_values=[0, 1], base_values=[0, 0])
+                cate_both = model.predict_cate(
+                    datasets["d_test"],
+                    treat_cols=["trainy1", "trainy2"],
+                    treat_values=[1, 1],
+                    base_values=[0, 0],
+                    feature_names=feature_names
+                )
+                cate_first = model.predict_cate(
+                    datasets["d_test"],
+                    treat_cols=["trainy1", "trainy2"],
+                    treat_values=[1, 0],
+                    base_values=[0, 0],
+                    feature_names=feature_names
+                )
+                cate_second = model.predict_cate(
+                    datasets["d_test"],
+                    treat_cols=["trainy1", "trainy2"],
+                    treat_values=[0, 1],
+                    base_values=[0, 0],
+                    feature_names=feature_names
+                )
                 print("CATE (beide Jahre vs. kein Training):", np.mean(cate_both))
                 print("CATE (nur 1. Jahr):", np.mean(cate_first))
                 print("CATE (nur 2. Jahr):", np.mean(cate_second))

@@ -69,7 +69,7 @@ def get_table_pvalues(trained_models, d_test, data_type="sim"):
                                                                               m=model["model"].m)    
     return df_results
 
-def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
+def get_table_pvalues_conditional(trained_models, d_test, data_type="sim", covariate_cols=None):
 
     models_names = get_models_names(trained_models)
     df_results = None
@@ -124,19 +124,18 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim"):
                     y_test_tensor = d_test.data["y"]
                     s_test_tensor = d_test.data["s"]
 
-                    X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy())
-                    X_test_df["assignment"] = d_test.data["a"].cpu().numpy().ravel()
-                    X_test_df.columns = [str(col) for col in X_test_df.columns]
+                    # Hole die Feature-Namen aus dem Modell oder der Config!
+                    feature_names = getattr(model_instance, "feature_names_in_", None)
+                    if feature_names is None:
+                        if covariate_cols is not None:
+                            feature_names = covariate_cols
+                        else:
+                            raise ValueError("Feature names are not available in the model and 'covariate_cols' was not provided.")
+                    feature_names = list(feature_names) + ["assignment"]
 
-                    train_columns = getattr(model_instance, "feature_names_in_", None)
-                    if train_columns is not None:
-                        train_columns = list(train_columns)
-                        for col in train_columns:
-                            if col not in X_test_df.columns:
-                                X_test_df[col] = 0
-                        X_test_df = X_test_df[train_columns]
-                    else:
-                        print("⚠️ Konnte Trainingsspalten nicht abrufen (feature_names_in_ fehlt im Modell).")
+                    X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy(), columns=feature_names[:-1])
+                    X_test_df["assignment"] = d_test.data["a"].cpu().numpy().ravel()
+                    X_test_df = X_test_df[feature_names]  # richtige Reihenfolge
 
                     y_test_series = pd.Series(y_test_tensor.cpu().numpy().ravel())
                     s_test_series = pd.Series(s_test_tensor.cpu().numpy().ravel())

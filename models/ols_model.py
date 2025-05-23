@@ -31,6 +31,15 @@ class OLSModel:
     def train(self, X: pd.DataFrame, y: pd.Series):
         self.logger.info("Starting training...")
         X_processed = X.copy()
+        
+        # Interaktionsterme hinzufügen
+      
+        if "trainy1" in X_processed.columns and "trainy2" in X_processed.columns:
+            X_processed["trainy1_x_trainy2"] = X_processed["trainy1"] * X_processed["trainy2"]
+                
+        # Speichere die Feature-Namen für spätere Verwendung
+        self.feature_names_in_ = X_processed.columns.tolist()
+        
         if self.impute and self.imputer is not None:
             X_processed = self.imputer.fit_transform(X_processed)
         if self.feature_selection and self.selector is not None:
@@ -125,25 +134,42 @@ class OLSModel:
         return (y1_pred - y0_pred).values
     
     def predict_cate(self, X: pd.DataFrame, treat_cols: list, treat_values: list, base_values: list = None) -> np.ndarray:
-        """
-        Schätzt den CATE für eine bestimmte Treatment-Kombination.
-        treat_cols: Liste der Treatment-Spalten, z.B. ["trainy1", "trainy2"]
-        treat_values: Werte für Treatment (z.B. [1, 1] für beide Trainingsjahre)
-        base_values: Werte für Baseline (z.B. [0, 0] für kein Training)
-        Gibt den Unterschied in der Outcome-Vorhersage zwischen treat_values und base_values zurück.
-        """
         X_treat = X.copy()
         X_base = X.copy()
+        
+        # Setze Treatment-Werte
         for col, val in zip(treat_cols, treat_values):
             X_treat[col] = val
+            
         if base_values is None:
             base_values = [0] * len(treat_cols)
+            
         for col, val in zip(treat_cols, base_values):
             X_base[col] = val
-        # Reihenfolge der Spalten wie beim Training sicherstellen
+            
+        # Interaktionsterme hinzufügen
+        if "trainy1" in X_treat.columns and "trainy2" in X_treat.columns:
+            X_treat["trainy1_x_trainy2"] = X_treat["trainy1"] * X_treat["trainy2"]
+            X_base["trainy1_x_trainy2"] = X_base["trainy1"] * X_base["trainy2"]
+        
+        # Weitere Verarbeitung wie bisher...
         if hasattr(self, "feature_order") and self.feature_order is not None:
             X_treat = X_treat[self.feature_order]
             X_base = X_base[self.feature_order]
+            
         y_treat = self.predict(X_treat)
         y_base = self.predict(X_base)
+        
         return (y_treat - y_base).values
+
+    def add_interactions(df):
+        # Kopie erstellen, um das Original nicht zu verändern
+        df_new = df.copy()
+        
+        # Interaktionsterm für Training in beiden Jahren
+        df_new["trainy1_x_trainy2"] = df_new["trainy1"] * df_new["trainy2"]
+        
+        # Weitere Interaktionen könnten hinzugefügt werden, z.B.:
+        # df_new["age_x_educ"] = df_new["age"] * df_new["educ"]
+        
+        return df_new

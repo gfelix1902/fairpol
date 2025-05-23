@@ -4,6 +4,17 @@ import joblib
 import os
 import pandas as pd
 import numpy as np
+import torch
+
+def move_model_to_cpu(model):
+    # Falls das Modell ein dict mit "trained_model" ist
+    if isinstance(model, dict) and "trained_model" in model:
+        model_obj = model["trained_model"]
+        if hasattr(model_obj, "model") and hasattr(model_obj.model, "to"):
+            model_obj.model.to(torch.device('cpu'))
+    # Falls das Modell direkt ein torch.nn.Module ist
+    elif hasattr(model, "to"):
+        model.to(torch.device('cpu'))
 
 if __name__ == "__main__":
     try:
@@ -20,7 +31,9 @@ if __name__ == "__main__":
 
         # Lade die trainierten Modelle
         path_models = utils.get_project_path() + "/results/exp_real_staff/models/"
-        trained_models = joblib.load(os.path.join(path_models, "trained_models (3).pkl"))
+        trained_models = joblib.load(os.path.join(path_models, "trained_models.pkl"), mmap_mode=None)
+        for m in trained_models.values():
+            move_model_to_cpu(m)
         print(f"✅ Trainierte Modelle geladen aus: {path_models}")
         
         # Speicherort für die Ergebnisse
@@ -54,12 +67,16 @@ if __name__ == "__main__":
 
             # OLS-Modell: DataFrame für predict_ite und predict_cate vorbereiten
             if model_name == "ols":
-                X_test = pd.DataFrame(datasets["d_test"].data["x"].cpu().numpy())
-                X_test = X_test.apply(pd.to_numeric, errors='coerce')
+                feature_names = config_exp["data"]["covariate_cols"] + ["assignment"]
+                # Erstelle DataFrame nur mit den Kovariaten
+                X_test = pd.DataFrame(
+                    datasets["d_test"].data["x"].cpu().numpy(),
+                    columns=config_exp["data"]["covariate_cols"]
+                )
+                # Füge assignment als neue Spalte hinzu
                 X_test["assignment"] = datasets["d_test"].data["a"].cpu().numpy().ravel()
-                X_test.columns = X_test.columns.astype(str)
-                if hasattr(model, "feature_order") and model.feature_order is not None:
-                    X_test = X_test[model.feature_order]
+                # Sortiere die Spalten in die richtige Reihenfolge
+                X_test = X_test[feature_names]  # richtige Reihenfolge
                 ite = model.predict_ite(X_test, treat_col="assignment")
                 cate_both = model.predict_cate(X_test, treat_cols=["trainy1", "trainy2"], treat_values=[1, 1], base_values=[0, 0])
                 cate_first = model.predict_cate(X_test, treat_cols=["trainy1", "trainy2"], treat_values=[1, 0], base_values=[0, 0])

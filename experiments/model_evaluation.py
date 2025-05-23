@@ -129,8 +129,6 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim", covar
                     if feature_names is None:
                         if covariate_cols is not None:
                             feature_names = covariate_cols
-                        else:
-                            raise ValueError("Feature names are not available in the model and 'covariate_cols' was not provided.")
                     feature_names = list(feature_names) + ["assignment"]
 
                     X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy(), columns=feature_names[:-1])

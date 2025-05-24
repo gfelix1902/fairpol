@@ -129,7 +129,7 @@ def train_models(config_exp, datasets, seed=1, fixed_params=None):
 
         if model_config["name"] == "ols":
             model_name = "ols"
-            ols_model = OLSModel(standardize=True)
+            ols_model = OLSModel(standardize=True, interaction_covariates=config_exp["data"]["covariate_cols"])
 
             # Extrahiere Features und Zielvariable
             X_train_tensor = datasets["d_train"].data["x"]

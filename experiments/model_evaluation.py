@@ -18,7 +18,7 @@ def create_table(models_names, rows):
     return df_results
 
 
-def get_policy_predictions(trained_models, d_test, data_type="real"):
+def get_policy_predictions(trained_models, d_test, data_type="real", covariate_cols_from_config=None): # MODIFIED SIGNATURE
     models_names = get_models_names(trained_models)
     df_results = pd.DataFrame(columns=[model["name"] for model in models_names], index=range(d_test.data["y"].shape[0]))
 
@@ -27,31 +27,37 @@ def get_policy_predictions(trained_models, d_test, data_type="real"):
         model_instance = model["model"]
 
         if model_name == "ols":
-            X_test_tensor = d_test.data["x"]
+            X_test_tensor = d_test.data["x"] # This contains only the covariate values
+
+            if covariate_cols_from_config is None:
+                raise ValueError("covariate_cols_from_config must be provided for OLS model evaluation when creating DataFrame from X_test_tensor.")
             
-            # Hier die Spaltennamen korrekt setzen!
-            feature_names = getattr(model_instance, "feature_names_in_", None)
-            if feature_names is None:
-                # Fallback, falls feature_names_in_ nicht vorhanden
-                feature_names = [str(i) for i in range(X_test_tensor.shape[1])]
+            # Create DataFrame with the correct covariate names for X_test_tensor
+            # X_test_tensor has shape (n_samples, n_covariates)
+            X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy(), columns=covariate_cols_from_config)
             
-            X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy(), columns=feature_names[:-1] if "assignment" in feature_names else feature_names)
+            # Add 'assignment' column from d_test.data["a"]
             X_test_df["assignment"] = d_test.data["a"].cpu().numpy().ravel()
             
-            # WICHTIG: Interaktionsterm hier hinzufügen!
+            # Add interaction term if its components ("trainy1", "trainy2") are present
+            # This check ensures that we only attempt to create the interaction if the base columns exist
             if "trainy1" in X_test_df.columns and "trainy2" in X_test_df.columns:
                 X_test_df["trainy1_x_trainy2"] = X_test_df["trainy1"] * X_test_df["trainy2"]
 
-            # Prüfe, ob alle benötigten Features vorhanden sind
+            # Align DataFrame with the features expected by the trained OLS model
             train_columns = getattr(model_instance, "feature_names_in_", None)
             if train_columns is not None:
-                train_columns = list(train_columns)
+                train_columns = list(train_columns) # Ensure it's a list
+                # Add any missing columns that the model expects (e.g., if interaction wasn't created above but model expects it)
                 for col in train_columns:
                     if col not in X_test_df.columns:
+                        print(f"⚠️ Warnung: Feature '{col}' vom OLS-Modell erwartet, aber nicht in X_test_df. Wird mit Nullen hinzugefügt.")
                         X_test_df[col] = 0
+                # Ensure X_test_df has only and exactly the columns in train_columns, in that order
                 X_test_df = X_test_df[train_columns]
             else:
-                print("⚠️ Konnte Trainingsspalten nicht abrufen (feature_names_in_ fehlt im Modell).")
+                # This case should ideally not happen if the OLS model was trained correctly with feature names
+                print("⚠️ Warnung: OLS-Modellinstanz hat kein 'feature_names_in_'. Vorhersage könnte unzuverlässig sein.")
             
             df_results[model_name] = model_instance.predict(X_test_df)
         elif "fpnet" in model_name:
@@ -131,41 +137,54 @@ def get_table_pvalues_conditional(trained_models, d_test, data_type="sim", covar
             model_name_str = model_info["name"]
             try:
                 if model_name_str == "ols":
-                    X_test_tensor = d_test.data["x"]
+                    X_test_tensor = d_test.data["x"] # Shape (n_samples, n_covariates) e.g., (1386, 16)
                     y_test_tensor = d_test.data["y"]
                     s_test_tensor = d_test.data["s"]
+                    a_test_tensor = d_test.data["a"] # Assignment tensor
 
-                    # Hole die Feature-Namen aus dem Modell oder der Config!
-                    feature_names = getattr(model_instance, "feature_names_in_", None)
-                    if feature_names is None:
-                        if covariate_cols is not None:
-                            feature_names = covariate_cols
-                    feature_names = list(feature_names) + ["assignment"]
+                    if covariate_cols is None:
+                        raise ValueError("covariate_cols (Liste der Namen der Kovariaten) muss für OLS-Modell in get_table_pvalues_conditional bereitgestellt werden.")
 
-                    X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy(), columns=feature_names[:-1])
-                    X_test_df["assignment"] = d_test.data["a"].cpu().numpy().ravel()
+                    # 1. Erstelle DataFrame X_test_df nur mit den Kovariaten-Spalten
+                    X_test_df = pd.DataFrame(X_test_tensor.cpu().numpy(), columns=covariate_cols)
                     
-                    # HINZUFÜGEN: Interaktionsterm erzeugen
+                    # 2. Füge die 'assignment'-Spalte hinzu
+                    X_test_df["assignment"] = a_test_tensor.cpu().numpy().ravel()
+                    
+                    # 3. Füge den Interaktionsterm hinzu, falls die Basis-Features vorhanden sind
                     if "trainy1" in X_test_df.columns and "trainy2" in X_test_df.columns:
                         X_test_df["trainy1_x_trainy2"] = X_test_df["trainy1"] * X_test_df["trainy2"]
                     
-                    # Prüfe, ob alle Trainings-Features vorhanden sind
-                    if hasattr(model_instance, "feature_names_in_") and model_instance.feature_names_in_ is not None:
-                        missing_features = [f for f in model_instance.feature_names_in_ if f not in X_test_df.columns]
-                        if missing_features:
-                            print(f"⚠️ Fehlende Features: {missing_features}")
-                            for feature in missing_features:
-                                X_test_df[feature] = 0
-                    
-                    # Sortiere die Spalten in die richtige Reihenfolge
-                    if hasattr(model_instance, "feature_names_in_") and model_instance.feature_names_in_ is not None:
-                        X_test_df = X_test_df[model_instance.feature_names_in_]
+                    # 4. Richte den DataFrame an den Features aus, mit denen das OLS-Modell trainiert wurde
+                    model_trained_features = getattr(model_instance, "feature_names_in_", None)
+                    if model_trained_features is not None:
+                        model_trained_features = list(model_trained_features) # Sicherstellen, dass es eine Liste ist
+                        
+                        # Füge fehlende Spalten hinzu, die das Modell erwartet (z.B. Interaktionsterm)
+                        for col in model_trained_features:
+                            if col not in X_test_df.columns:
+                                print(f"⚠️ Warnung (pvalues_conditional OLS): Feature '{col}' vom Modell erwartet, aber nicht in X_test_df. Wird mit Nullen hinzugefügt.")
+                                X_test_df[col] = 0
+                        
+                        # Stelle sicher, dass X_test_df genau die Spalten in model_trained_features hat und in dieser Reihenfolge
+                        try:
+                            X_test_df = X_test_df[model_trained_features]
+                        except KeyError as e:
+                            print(f"❌ Fehler beim Anpassen der Spalten für OLS in pvalues_conditional: {e}")
+                            print(f"   X_test_df Spalten: {X_test_df.columns.tolist()}")
+                            print(f"   Erwartete Spalten: {model_trained_features}")
+                            raise
                     else:
-                        X_test_df = X_test_df[feature_names]
+                        # Dieser Fall sollte nicht eintreten, wenn das OLS-Modell korrekt mit Feature-Namen trainiert wurde
+                        print("⚠️ Warnung (pvalues_conditional OLS): OLS-Modellinstanz hat kein 'feature_names_in_'. Vorhersage könnte unzuverlässig sein.")
+                        # Als Fallback könnten die aktuellen Spalten von X_test_df verwendet werden, aber das ist riskant.
+                        # Es ist besser, hier einen Fehler auszulösen oder eine robustere Fallback-Logik zu implementieren,
+                        # falls dieser Zustand erwartet wird. Fürs Erste wird eine Warnung ausgegeben.
 
                     y_test_series = pd.Series(y_test_tensor.cpu().numpy().ravel())
                     s_test_series = pd.Series(s_test_tensor.cpu().numpy().ravel())
 
+                    # Die Methode evaluate_conditional_pvalues des OLS-Modells erwartet X_test als DataFrame
                     result = model_instance.evaluate_conditional_pvalues(X_test_df, y_test_series, s_test_series)
                 else: # For fpnet and other models expecting Static_Dataset
                     result = model_instance.evaluate_conditional_pvalues(d_test, oracle=False)

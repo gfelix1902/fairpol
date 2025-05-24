@@ -33,53 +33,91 @@ class OLSModel:
         X_processed = X.copy()
         
         # Interaktionsterme hinzufügen
-      
         if "trainy1" in X_processed.columns and "trainy2" in X_processed.columns:
             X_processed["trainy1_x_trainy2"] = X_processed["trainy1"] * X_processed["trainy2"]
                 
-        self.feature_names_in_ = X_processed.columns.tolist()
+        # Wichtig: feature_names_in_ initial setzen, bevor Imputation/Selektion die Spalten ändern könnten
+        # Diese Version von feature_names_in_ wird verwendet, um DataFrames nach Transformationen wiederherzustellen.
+        current_feature_names = X_processed.columns.tolist()
         
         if self.impute and self.imputer is not None:
             X_processed_transformed = self.imputer.fit_transform(X_processed)
             if isinstance(X_processed_transformed, np.ndarray):
-                 X_processed = pd.DataFrame(X_processed_transformed, columns=self.feature_names_in_ if len(self.feature_names_in_) == X_processed_transformed.shape[1] else [f"feature_{i}" for i in range(X_processed_transformed.shape[1])])
+                X_processed = pd.DataFrame(X_processed_transformed, columns=current_feature_names, index=X_processed.index)
             else:
-                 X_processed = X_processed_transformed
-            self.feature_names_in_ = X_processed.columns.tolist() # Update feature names if columns changed
+                X_processed = X_processed_transformed
+            current_feature_names = X_processed.columns.tolist()
 
         if self.feature_selection and self.selector is not None:
-            selected_features_mask = self.selector.fit(X_processed).get_support()
+            # selector.fit verändert X_processed nicht direkt, speichert aber die Maske
+            self.selector.fit(X_processed) 
+            selected_features_mask = self.selector.get_support()
             X_processed = X_processed.loc[:, selected_features_mask]
-            self.feature_names_in_ = X_processed.columns.tolist() # Update feature names after selection
+            current_feature_names = X_processed.columns.tolist() 
 
         if self.standardize and self.scaler is not None:
+            # scaler.fit_transform verändert X_processed
             X_processed_scaled = self.scaler.fit_transform(X_processed)
             if isinstance(X_processed_scaled, np.ndarray):
-                X_processed = pd.DataFrame(X_processed_scaled, columns=self.feature_names_in_)
+                X_processed = pd.DataFrame(X_processed_scaled, columns=current_feature_names, index=X_processed.index)
             else:
                 X_processed = X_processed_scaled
+            # current_feature_names bleiben gleich, da Scaling die Namen nicht ändert
 
+        # self.feature_names_in_ sollte die finalen Namen speichern, die an self.model.fit gehen
+        self.feature_names_in_ = X_processed.columns.tolist()
+        
         if self.cv:
             scores = cross_val_score(self.model, X_processed, y, cv=self.cv, scoring="neg_mean_squared_error")
             print(f"Cross-Validation MSE: {-scores.mean():.4f} ± {scores.std():.4f}")
         
-        self.model.fit(X_processed, y) # self.model (scikit-learn) wird hier trainiert.
-                                       # Wenn X_processed ein DataFrame ist, speichert self.model intern dessen Spaltennamen.
-
+        self.model.fit(X_processed, y) 
         self.logger.info("Training completed.")
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
-        if isinstance(X, np.ndarray):
-            X = pd.DataFrame(X)
-        X_processed = X.copy()
-        if self.impute and self.imputer is not None:
-            X_processed = self.imputer.transform(X_processed)
-        if self.feature_selection and self.selector is not None:
-            X_processed = self.selector.transform(X_processed)
-        if self.standardize and self.scaler is not None:
-            X_processed = self.scaler.transform(X_processed)  # <--- Hier wird der Scaler angewendet
-        return pd.Series(self.model.predict(X_processed), index=X.index)
+        if not isinstance(X, pd.DataFrame):
+            self.logger.error("Input X to OLSModel.predict must be a pandas DataFrame.")
+            raise TypeError("Input X to OLSModel.predict must be a pandas DataFrame.")
 
+        X_processed_df = X.copy()
+        original_index = X_processed_df.index
+
+        current_cols = X_processed_df.columns.tolist()
+
+        if self.impute and self.imputer is not None:
+            imputed_data = self.imputer.transform(X_processed_df)
+            if isinstance(imputed_data, np.ndarray):
+                X_processed_df = pd.DataFrame(imputed_data, columns=current_cols, index=original_index)
+            else:
+                X_processed_df = imputed_data
+            current_cols = X_processed_df.columns.tolist()
+
+
+        if self.feature_selection and self.selector is not None:
+            selected_data = self.selector.transform(X_processed_df) # Kann ndarray zurückgeben
+
+            if isinstance(selected_data, np.ndarray):
+                X_processed_df = pd.DataFrame(selected_data, columns=self.feature_names_in_, index=original_index)
+            else: # selector.transform gab einen DataFrame zurück
+                X_processed_df = selected_data
+
+        if self.standardize and self.scaler is not None:
+            scaled_data = self.scaler.transform(X_processed_df)
+            X_processed_df = pd.DataFrame(scaled_data, columns=X_processed_df.columns, index=original_index)
+
+        expected_cols = self.feature_names_in_
+        if hasattr(self.model, 'feature_names_in_') and self.model.feature_names_in_ is not None:
+            expected_cols = list(self.model.feature_names_in_)
+        
+        for col in expected_cols:
+            if col not in X_processed_df.columns:
+                self.logger.warning(f"Spalte '{col}' wurde vom Modell erwartet, aber nicht in den verarbeiteten Daten für die Vorhersage gefunden. Füge sie mit Nullen hinzu.")
+                X_processed_df[col] = 0
+        
+        X_for_model_predict = X_processed_df[expected_cols]
+
+        return pd.Series(self.model.predict(X_for_model_predict), index=original_index)
+    
     def evaluate(self, X: pd.DataFrame, y: pd.Series) -> dict:
         predictions = self.predict(X)
         mse = mean_squared_error(y, predictions)

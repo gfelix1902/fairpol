@@ -41,8 +41,18 @@ if __name__ == "__main__":
         os.makedirs(path_results, exist_ok=True)
 
         # Führe die Evaluation durch
-        policy_predictions = get_policy_predictions(trained_models, datasets["d_test"], data_type=config_exp["data"]["dataset"])
-        pvalues_conditional = get_table_pvalues_conditional(trained_models, datasets["d_test"], data_type=config_exp["data"]["dataset"])
+        policy_predictions = get_policy_predictions(
+            trained_models, 
+            datasets["d_test"], 
+            data_type=config_exp["data"]["dataset"],
+            covariate_cols_from_config=config_exp["data"]["covariate_cols"] # PASS THE COVARIATE NAMES
+        )
+        pvalues_conditional = get_table_pvalues_conditional(
+            trained_models, 
+            datasets["d_test"], 
+            data_type=config_exp["data"]["dataset"],
+            covariate_cols=config_exp["data"]["covariate_cols"] # Pass this also to pvalues_conditional if OLS there needs it
+        )
 
         print("\n--- Detailausgabe pro Modell und Testdatenelement ---")
         y = datasets["d_test"].data["y"]

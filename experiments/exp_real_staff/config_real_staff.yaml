@@ -15,7 +15,7 @@ data:
 
 # Configuration for experiment
 experiment:
-  runs: 10
+  runs: 5
   seed: 12345
   plotting: True
   neptune: True
